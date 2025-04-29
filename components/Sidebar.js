@@ -13,7 +13,7 @@ export default function Sidebar() {
         <Link href="/dashboard/map">🗺️ 地図</Link>
         <Link href="/dashboard/stock">📦 備蓄情報</Link>
         <Link href="/dashboard/alert">🚨 アラート情報</Link>
-        <Link href="/dashboard/settings">⚙️ 設定</Link>
+        {/* <Link href="/dashboard/settings">⚙️ 設定</Link> */}
       </nav>
     </div>
   );
