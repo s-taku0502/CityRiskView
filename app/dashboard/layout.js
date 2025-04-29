@@ -5,7 +5,7 @@
 import Sidebar from "@/components/Sidebar";
 
 export const metadata = {
-  title: 'Dashboard',  // ← 適当でOK
+  title: 'CityRiskView',
 };
 
 export default function DashboardLayout({ children }) {
