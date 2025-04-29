@@ -9,17 +9,17 @@ mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
 
 export default function Map() {
   const mapContainer = useRef(null);
-  const map = useRef(null);
+  const mapInstance = useRef(null);
 
   useEffect(() => {
-    if (map.current) return; // すでに初期化済みなら何もしない
+    if (mapInstance.current) return; // すでに初期化済みなら何もしない
 
     // 現在地を取得
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const { latitude, longitude } = position.coords;
 
-        map.current = new mapboxgl.Map({
+        mapInstance.current = new mapboxgl.Map({
           container: mapContainer.current,
           style: 'mapbox://styles/mapbox/streets-v11',
           center: [longitude, latitude],
@@ -29,13 +29,13 @@ export default function Map() {
         // 現在地にマーカーを追加
         new mapboxgl.Marker()
           .setLngLat([longitude, latitude])
-          .addTo(map.current);
+          .addTo(mapInstance.current);
       },
       (error) => {
         console.error('現在地の取得に失敗:', error);
 
         // 取得できない場合は東京駅をデフォルト表示
-        map.current = new mapboxgl.Map({
+        mapInstance.current = new mapboxgl.Map({
           container: mapContainer.current,
           style: 'mapbox://styles/mapbox/streets-v11',
           center: [139.7671, 35.6812], // 東京駅
