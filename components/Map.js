@@ -26,10 +26,10 @@ export default function Map() {
           zoom: 13,
         });
 
-        // 現在地にマーカーを追加
-        new mapboxgl.Marker()
-          .setLngLat([longitude, latitude])
-          .addTo(mapInstance.current);
+        // // 現在地にマーカーを追加
+        // new mapboxgl.Marker()
+        //   .setLngLat([longitude, latitude])
+        //   .addTo(mapInstance.current);
       },
       (error) => {
         console.error('現在地の取得に失敗:', error);
@@ -47,7 +47,7 @@ export default function Map() {
 
   return (
     <div className="w-full h-full">
-      <div ref={mapContainer} className="w-full h-[600px] rounded-xl shadow-md" />
+      <div ref={mapContainer} className="w-full h-[calc(100vh-200px)] rounded-xl" />
     </div>
   );
 }
