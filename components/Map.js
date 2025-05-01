@@ -47,7 +47,7 @@ export default function Map() {
 
   return (
     <div className="w-full h-full">
-      <div ref={mapContainer} className="w-full h-[600px] rounded-xl shadow-md" />
+      <div ref={mapContainer} className="w-full h-[calc(100vh-200px)] rounded-xl" />
     </div>
   );
 }
