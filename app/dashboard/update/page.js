@@ -1,11 +1,11 @@
 const updates = [
     {
-        title: "2023年10月",
-        content: "新しい機能を追加しました。"
+        title: "2025年5月2日",
+        content: "地図画面を修正しました。"
     },
     {
-        title: "2023年9月",
-        content: "バグを修正しました。"
+        title: "2025年5月1日",
+        content: "サイトを公開しました。"
     }
 ];
 
