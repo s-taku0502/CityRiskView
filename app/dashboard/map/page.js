@@ -4,9 +4,11 @@ import Map from "@/components/Map";
 
 export default function MapPage() {
   return (
-    <div>
-      <h2 className="text-xl font-bold mb-4">🗺️ 現在地マップ</h2>
-      <Map />
+    <div className="space-y-4">
+      <h2 className="text-xl font-bold">🗺️ 現在地マップ</h2>
+      <div className="bg-white rounded-lg shadow">
+        <Map />
+      </div>
     </div>
   );
 }
