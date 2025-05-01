@@ -9,43 +9,66 @@ export default function Map() {
   const mapContainer = useRef(null);
   const mapInstance = useRef(null);
 
+  // 2地点の距離（メートル）を計算
+  const distance = (lat1, lon1, lat2, lon2) => {
+    const R = 6371e3;
+    const φ1 = (lat1 * Math.PI) / 180;
+    const φ2 = (lat2 * Math.PI) / 180;
+    const Δφ = ((lat2 - lat1) * Math.PI) / 180;
+    const Δλ = ((lon2 - lon1) * Math.PI) / 180;
+
+    const a = Math.sin(Δφ / 2) ** 2 +
+              Math.cos(φ1) * Math.cos(φ2) *
+              Math.sin(Δλ / 2) ** 2;
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+    return R * c;
+  };
+
   useEffect(() => {
     if (mapInstance.current) return;
 
-    // 仮の初期位置（表示を早く）
+    // 初期化（東京駅を仮の中心）
     mapInstance.current = new mapboxgl.Map({
       container: mapContainer.current,
       style: 'mapbox://styles/mapbox/streets-v11',
-      center: [139.7671, 35.6812], // 東京駅
+      center: [139.7671, 35.6812],
       zoom: 10,
     });
 
-    // 現在地取得して更新
+    // 現在地を取得
     navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const { latitude, longitude } = position.coords;
-      
-          // 地図中心を更新
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        console.log('取得した現在地:', latitude, longitude);
+
+        const distFromOsaka = distance(latitude, longitude, 34.6937, 135.5023);
+        console.log('大阪からの距離:', Math.round(distFromOsaka), 'm');
+
+        if (distFromOsaka < 500000) {
+          // flyTo & マーカー追加
           mapInstance.current?.flyTo({
             center: [longitude, latitude],
             zoom: 13,
             essential: true,
           });
-      
-          // 現在地マーカーを追加
+
           new mapboxgl.Marker({ color: 'blue' })
             .setLngLat([longitude, latitude])
             .addTo(mapInstance.current);
-        },
-        (error) => {
-          console.error('現在地の取得に失敗:', error);
-        },
-        {
-          enableHighAccuracy: true, // GPSやWi-Fiなど、最も正確な情報を使う（バッテリー消費あり
-          timeout: 10000, // 10秒だけ位置情報取得を待つ（それ以上は待たない）
-          maximumAge: 0, // 位置情報をキャッシュから取得しない（常に最新）
+        } else {
+          console.warn('取得した位置が異常なためスキップされました。');
         }
-      );     
+      },
+      (error) => {
+        console.error('現在地の取得に失敗:', error);
+      },
+      {
+        enableHighAccuracy: true, // 高精度な位置情報を取得
+        timeout: 10000, // タイムアウト時間（ミリ秒）
+        maximumAge: 0, // キャッシュを使用しない
+      }
+    );
   }, []);
 
   return (
