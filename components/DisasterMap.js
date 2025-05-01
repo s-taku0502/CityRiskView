@@ -22,25 +22,30 @@ export default function Map() {
 
     // 現在地取得して更新
     navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const { latitude, longitude } = position.coords;
-
-        // 地図中心を更新
-        mapInstance.current?.flyTo({
-          center: [longitude, latitude],
-          zoom: 13,
-          essential: true,
-        });
-
-        // 現在地マーカーを追加
-        new mapboxgl.Marker({ color: 'blue' })
-          .setLngLat([longitude, latitude])
-          .addTo(mapInstance.current);
-      },
-      (error) => {
-        console.error('現在地の取得に失敗:', error);
-      }
-    );
+        (position) => {
+          const { latitude, longitude } = position.coords;
+      
+          // 地図中心を更新
+          mapInstance.current?.flyTo({
+            center: [longitude, latitude],
+            zoom: 13,
+            essential: true,
+          });
+      
+          // 現在地マーカーを追加
+          new mapboxgl.Marker({ color: 'blue' })
+            .setLngLat([longitude, latitude])
+            .addTo(mapInstance.current);
+        },
+        (error) => {
+          console.error('現在地の取得に失敗:', error);
+        },
+        {
+          enableHighAccuracy: true, // GPSやWi-Fiなど、最も正確な情報を使う（バッテリー消費あり
+          timeout: 10000, // 10秒だけ位置情報取得を待つ（それ以上は待たない）
+          maximumAge: 0, // 位置情報をキャッシュから取得しない（常に最新）
+        }
+      );     
   }, []);
 
   return (
