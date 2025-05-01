@@ -8,6 +8,7 @@ mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
 export default function Map() {
   const mapContainer = useRef(null);
   const mapInstance = useRef(null);
+  const markerRef = useRef(null); // ← マーカー管理用
   const [errorMsg, setErrorMsg] = useState('');
 
   // 2点間距離（メートル）計算
@@ -26,7 +27,7 @@ export default function Map() {
     return R * c;
   };
 
-  // 現在地取得ロジック（再利用）
+  // 現在地取得
   const fetchCurrentLocation = () => {
     navigator.geolocation.getCurrentPosition(
       (position) => {
@@ -34,8 +35,6 @@ export default function Map() {
         console.log('現在地:', latitude, longitude);
 
         const distFromOsaka = distance(latitude, longitude, 34.6937, 135.5023);
-        console.log('大阪からの距離:', Math.round(distFromOsaka), 'm');
-
         if (distFromOsaka < 500000) {
           mapInstance.current?.flyTo({
             center: [longitude, latitude],
@@ -43,13 +42,19 @@ export default function Map() {
             essential: true,
           });
 
-          new mapboxgl.Marker({ color: 'blue' })
+          // 古いマーカー削除
+          if (markerRef.current) {
+            markerRef.current.remove();
+          }
+
+          // 新しいマーカー追加
+          markerRef.current = new mapboxgl.Marker({ color: 'blue' })
             .setLngLat([longitude, latitude])
             .addTo(mapInstance.current);
 
           setErrorMsg('');
         } else {
-          console.warn('異常な位置を検出しました');
+          console.warn('異常な位置を検出しました（大阪に飛んだ？）');
           setErrorMsg('現在地の取得に失敗した可能性があります（大阪に飛んだ？）');
         }
       },
@@ -68,15 +73,14 @@ export default function Map() {
   useEffect(() => {
     if (mapInstance.current) return;
 
-    // 初期化
     mapInstance.current = new mapboxgl.Map({
       container: mapContainer.current,
       style: 'mapbox://styles/mapbox/streets-v11',
-      center: [139.7671, 35.6812],
+      center: [139.7671, 35.6812], // 東京駅
       zoom: 10,
     });
 
-    fetchCurrentLocation(); // 初回取得
+    fetchCurrentLocation();
   }, []);
 
   return (
