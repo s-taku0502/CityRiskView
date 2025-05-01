@@ -1,5 +1,5 @@
 // 地図だけ表示する画面
-"use client"; // ← これを追加
+"use client";
 
 // import dynamic from "next/dynamic";
 import Map from "@/components/Map";
