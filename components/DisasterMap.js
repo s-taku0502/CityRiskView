@@ -1,8 +1,6 @@
-// Map.js の変更の試し書き
-
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
@@ -10,8 +8,9 @@ mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
 export default function Map() {
   const mapContainer = useRef(null);
   const mapInstance = useRef(null);
+  const [errorMsg, setErrorMsg] = useState('');
 
-  // 2地点の距離（メートル）を計算
+  // 2点間距離（メートル）計算
   const distance = (lat1, lon1, lat2, lon2) => {
     const R = 6371e3;
     const φ1 = (lat1 * Math.PI) / 180;
@@ -27,28 +26,17 @@ export default function Map() {
     return R * c;
   };
 
-  useEffect(() => {
-    if (mapInstance.current) return;
-
-    // 初期化（東京駅を仮の中心）
-    mapInstance.current = new mapboxgl.Map({
-      container: mapContainer.current,
-      style: 'mapbox://styles/mapbox/streets-v11',
-      center: [139.7671, 35.6812],
-      zoom: 10,
-    });
-
-    // 現在地を取得
+  // 現在地取得ロジック（再利用）
+  const fetchCurrentLocation = () => {
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const { latitude, longitude } = position.coords;
-        console.log('取得した現在地:', latitude, longitude);
+        console.log('現在地:', latitude, longitude);
 
         const distFromOsaka = distance(latitude, longitude, 34.6937, 135.5023);
-        // console.log('大阪からの距離:', Math.round(distFromOsaka), 'm');
+        console.log('大阪からの距離:', Math.round(distFromOsaka), 'm');
 
         if (distFromOsaka < 500000) {
-          // flyTo & マーカー追加
           mapInstance.current?.flyTo({
             center: [longitude, latitude],
             zoom: 13,
@@ -58,24 +46,55 @@ export default function Map() {
           new mapboxgl.Marker({ color: 'blue' })
             .setLngLat([longitude, latitude])
             .addTo(mapInstance.current);
+
+          setErrorMsg('');
         } else {
-          console.warn('取得した位置が異常なためスキップされました。');
+          console.warn('異常な位置を検出しました');
+          setErrorMsg('現在地の取得に失敗した可能性があります（大阪に飛んだ？）');
         }
       },
       (error) => {
-        console.error('現在地の取得に失敗:', error);
+        console.error('現在地取得エラー:', error);
+        setErrorMsg('現在地の取得に失敗しました。');
       },
       {
-        enableHighAccuracy: true, // 高精度な位置情報を取得
-        timeout: 10000, // タイムアウト時間（ミリ秒）
-        maximumAge: 0, // キャッシュを使用しない
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0,
       }
     );
+  };
+
+  useEffect(() => {
+    if (mapInstance.current) return;
+
+    // 初期化
+    mapInstance.current = new mapboxgl.Map({
+      container: mapContainer.current,
+      style: 'mapbox://styles/mapbox/streets-v11',
+      center: [139.7671, 35.6812],
+      zoom: 10,
+    });
+
+    fetchCurrentLocation(); // 初回取得
   }, []);
 
   return (
-    <div className="w-full h-full">
+    <div className="w-full h-full relative">
       <div ref={mapContainer} className="w-full h-[calc(100vh-200px)] rounded-xl" />
+
+      {errorMsg && (
+        <div className="absolute top-4 left-4 bg-red-500 text-white px-4 py-2 rounded shadow-md z-10">
+          {errorMsg}
+        </div>
+      )}
+
+      <button
+        onClick={fetchCurrentLocation}
+        className="absolute bottom-4 right-4 bg-blue-600 text-white px-4 py-2 rounded-xl shadow-md hover:bg-blue-700 z-10"
+      >
+        現在地を再取得
+      </button>
     </div>
   );
 }
