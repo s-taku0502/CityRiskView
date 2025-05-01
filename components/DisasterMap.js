@@ -1,3 +1,5 @@
+// Map.js の変更の試し書き
+
 'use client';
 
 import { useEffect, useRef } from 'react';
@@ -43,7 +45,7 @@ export default function Map() {
         console.log('取得した現在地:', latitude, longitude);
 
         const distFromOsaka = distance(latitude, longitude, 34.6937, 135.5023);
-        console.log('大阪からの距離:', Math.round(distFromOsaka), 'm');
+        // console.log('大阪からの距離:', Math.round(distFromOsaka), 'm');
 
         if (distFromOsaka < 500000) {
           // flyTo & マーカー追加
