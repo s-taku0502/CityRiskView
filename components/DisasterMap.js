@@ -20,10 +20,8 @@ export default function Map() {
     const Δλ = ((lon2 - lon1) * Math.PI) / 180;
 
     const a = Math.sin(Δφ / 2) ** 2 +
-              Math.cos(φ1) * Math.cos(φ2) *
-              Math.sin(Δλ / 2) ** 2;
+              Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) ** 2;
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
     return R * c;
   };
 
@@ -42,20 +40,18 @@ export default function Map() {
             essential: true,
           });
 
-          // 古いマーカー削除
-          if (markerRef.current) {
-            markerRef.current.remove();
-          }
+          // 移動が終わったらマーカーを追加
+          mapInstance.current.once('moveend', () => {
+            if (markerRef.current) {
+              markerRef.current.remove();
+            }
 
-          // 新しいマーカー追加
-          markerRef.current = new mapboxgl.Marker({ color: 'blue' })
-            .setLngLat([longitude, latitude])
-            .addTo(mapInstance.current);
+            markerRef.current = new mapboxgl.Marker({ color: 'blue' })
+              .setLngLat([longitude, latitude])
+              .addTo(mapInstance.current);
+          });
 
           setErrorMsg('');
-        } else {
-          console.warn('異常な位置を検出しました（大阪に飛んだ？）');
-          setErrorMsg('現在地の取得に失敗した可能性があります（大阪に飛んだ？）');
         }
       },
       (error) => {
@@ -93,12 +89,12 @@ export default function Map() {
         </div>
       )}
 
-      <button
+      {/* <button
         onClick={fetchCurrentLocation}
         className="absolute bottom-4 right-4 bg-blue-600 text-white px-4 py-2 rounded-xl shadow-md hover:bg-blue-700 z-10"
       >
         現在地を再取得
-      </button>
+      </button> */}
     </div>
   );
 }
