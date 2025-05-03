@@ -45,19 +45,19 @@ export default function Map() {
         console.log('取得した現在地:', latitude, longitude);
 
         const distFromOsaka = distance(latitude, longitude, 34.6937, 135.5023);
-        // console.log('大阪からの距離:', Math.round(distFromOsaka), 'm');
 
         if (distFromOsaka < 500000) {
-          // flyTo & マーカー追加
+          // マーカーを追加せず、地図の移動のみを行う
           mapInstance.current?.flyTo({
             center: [longitude, latitude],
-            zoom: 13,
+            zoom: 14,
             essential: true,
           });
 
-          new mapboxgl.Marker({ color: 'blue' })
-            .setLngLat([longitude, latitude])
-            .addTo(mapInstance.current);
+          // マーカーを追加する場合は以下のコメントを外す
+          // new mapboxgl.Marker({ color: 'blue' })
+          //   .setLngLat([longitude, latitude])
+          //   .addTo(mapInstance.current);
         } else {
           console.warn('取得した位置が異常なためスキップされました。');
         }
