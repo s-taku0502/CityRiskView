@@ -4,11 +4,11 @@
 
 import { useEffect } from 'react';
 import mapboxgl from 'mapbox-gl';
-import evacuationData from '../data/evacuation.geojson'; // ← これがさっきのGeoJSONファイル
+import evacuationData from '../data/evacuation.geojson';
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
 
-export default function DisasterMap({ map }) {
+export default function DisasterMap({ map, onSelectFeature }) {
   useEffect(() => {
     if (!map) return;
     if (map.getSource('evacuationPoints')) return;
@@ -32,26 +32,7 @@ export default function DisasterMap({ map }) {
 
     map.on('click', 'evacuationPoints-layer', (e) => {
       const feature = e.features[0];
-      const coords = feature.geometry.coordinates.slice();
-      const props = feature.properties;
-
-      const stockList = JSON.parse(props.stock).map(
-        (item) => `${item.item}: ${item.quantity}`
-      ).join('<br/>');
-
-      const popupHtml = `
-        <strong>${props.name}</strong><br/>
-        住所: ${props.address}<br/>
-        収容人数: ${props.capacity}<br/>
-        現在の人数: ${props.current_people}<br/>
-        <u>備蓄情報</u><br/>
-        ${stockList}
-      `;
-
-      new mapboxgl.Popup()
-        .setLngLat(coords)
-        .setHTML(popupHtml)
-        .addTo(map);
+      onSelectFeature(feature); // ← ここで親に渡す
     });
 
     map.on('mouseenter', 'evacuationPoints-layer', () => {
@@ -60,7 +41,7 @@ export default function DisasterMap({ map }) {
     map.on('mouseleave', 'evacuationPoints-layer', () => {
       map.getCanvas().style.cursor = '';
     });
-  }, [map]);
+  }, [map, onSelectFeature]);
 
   return null;
 }

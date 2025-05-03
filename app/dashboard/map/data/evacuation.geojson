@@ -1,6 +1,4 @@
 {
-    "/": "避難所データの仮ファイル（API連携前）",
-
     "type": "FeatureCollection",
     "features": [
       {
