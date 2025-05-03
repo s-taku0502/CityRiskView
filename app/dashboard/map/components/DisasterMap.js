@@ -1,3 +1,5 @@
+// 災害・避難所マーカー描画（GeoJSONから）
+
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
