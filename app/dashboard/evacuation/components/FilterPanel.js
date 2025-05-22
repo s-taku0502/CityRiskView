@@ -1,4 +1,3 @@
-// components/FilterPanel.js
 export default function FilterPanel({
                                       keyword, setKeyword,
                                       prefecture,
