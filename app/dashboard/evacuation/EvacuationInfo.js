@@ -12,7 +12,10 @@ export default function EvacuationInfo() {
           <p>
             在庫アラート:
             <span
-              className={`ml-2 px-2 py-1 rounded-full text-sm ${shelter.stock_alert ? 'bg-red-100 text-red-700 font-semibold' : 'bg-green-100 text-green-700'}`}
+              className={`ml-2 px-2 py-1 rounded-full text-sm 
+              ${shelter.stock_alert 
+                ? 'bg-red-100 text-red-700 font-semibold' 
+                : 'bg-green-100 text-green-700'}`}
             >
               {shelter.stock_alert ? '要確認' : '正常'}
             </span>
