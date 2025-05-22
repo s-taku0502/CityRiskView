@@ -1,14 +1,15 @@
-// page.js または EvacuationInfo.js など
 'use client';
 import { useState } from 'react';
 import { mockShelters } from './EvacuationMockData';
 import FilterPanel from './components/FilterPanel'; // パスは調整してね
 
 export default function EvacuationInfo() {
+  // 検索フィルターの設定
   const [keyword, setKeyword] = useState('');
   const [prefecture, setPrefecture] = useState('');
   const [city, setCity] = useState('');
 
+  // 検索条件
   const filteredShelters = mockShelters.filter((shelter) => {
     const keywordMatch = !keyword || shelter.name_kana.some((k) => k.includes(keyword));
     const prefectureMatch = !prefecture || shelter.prefecture === prefecture;
@@ -16,6 +17,7 @@ export default function EvacuationInfo() {
     return keywordMatch && prefectureMatch && cityMatch;
   });
 
+  // 都道府県・市町村リストの抽出（重複除去）
   const prefectureOptions = [...new Set(mockShelters.map((s) => s.prefecture))];
   const cityOptions = [...new Set(mockShelters.map((s) => s.city))];
 
