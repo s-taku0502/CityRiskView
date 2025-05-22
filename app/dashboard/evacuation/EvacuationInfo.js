@@ -24,6 +24,10 @@ export default function EvacuationInfo() {
     return keywordMatch && prefectureMatch && cityMatch;
   });
 
+  // 都道府県・市町村リスト（選択肢）の抽出（自動取得）
+  const prefectureOptions = [...new Set(mockShelters.map(s => s.prefecture))];
+  const cityOptions = [...new Set(mockShelters.map(s => s.city))];
+
   return (
     <div className="p-4 space-y-4">
       {mockShelters.map((shelter) => (
