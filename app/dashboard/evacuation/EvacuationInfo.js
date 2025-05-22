@@ -1,4 +1,4 @@
-import { mockShelters } from './evacuationMockData';
+import { mockShelters } from './EvacuationMockData';
 
 export default function EvacuationInfo() {
   return (
