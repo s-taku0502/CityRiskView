@@ -1,7 +1,29 @@
+'use client';
+import {useState} from 'react'
 import { mockShelters } from './EvacuationMockData';
-import {green} from "next/dist/lib/picocolors";
 
 export default function EvacuationInfo() {
+  // データの定義づけ
+  const [keyword, setKeyword] = useState('');
+  const [prefecture, setPrefecture] = useState('');
+  const [city,  setCity] = useState('');
+
+  // フィルター処理
+  const filteredShelters = mockShelters.filter((shelter) => {
+    // キーワード検索
+    const keywordMatch =
+      !keyword || // 未入力時は全て通す
+      shelter.name_kana.some((k) => k.includes(keyword));
+
+    // 都道府県検索
+    const prefectureMatch = !prefecture || shelter.prefecture === prefecture;
+
+    // 市町村検索
+    const cityMatch = !city || shelter.city === city;
+
+    return keywordMatch && prefectureMatch && cityMatch;
+  });
+
   return (
     <div className="p-4 space-y-4">
       {mockShelters.map((shelter) => (
