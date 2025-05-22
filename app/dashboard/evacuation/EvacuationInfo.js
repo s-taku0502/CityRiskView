@@ -1,36 +1,40 @@
+// page.js または EvacuationInfo.js など
 'use client';
-import {useState} from 'react'
+import { useState } from 'react';
 import { mockShelters } from './EvacuationMockData';
+import FilterPanel from './components/FilterPanel'; // パスは調整してね
 
 export default function EvacuationInfo() {
-  // データの定義づけ
   const [keyword, setKeyword] = useState('');
   const [prefecture, setPrefecture] = useState('');
-  const [city,  setCity] = useState('');
+  const [city, setCity] = useState('');
 
-  // フィルター処理
   const filteredShelters = mockShelters.filter((shelter) => {
-    // キーワード検索
-    const keywordMatch =
-      !keyword || // 未入力時は全て通す
-      shelter.name_kana.some((k) => k.includes(keyword));
-
-    // 都道府県検索
+    const keywordMatch = !keyword || shelter.name_kana.some((k) => k.includes(keyword));
     const prefectureMatch = !prefecture || shelter.prefecture === prefecture;
-
-    // 市町村検索
     const cityMatch = !city || shelter.city === city;
-
     return keywordMatch && prefectureMatch && cityMatch;
   });
 
-  // 都道府県・市町村リスト（選択肢）の抽出（自動取得）
-  const prefectureOptions = [...new Set(mockShelters.map(s => s.prefecture))];
-  const cityOptions = [...new Set(mockShelters.map(s => s.city))];
+  const prefectureOptions = [...new Set(mockShelters.map((s) => s.prefecture))];
+  const cityOptions = [...new Set(mockShelters.map((s) => s.city))];
 
   return (
     <div className="p-4 space-y-4">
-      {mockShelters.map((shelter) => (
+      {/* フィルターUIだけ分離 */}
+      <FilterPanel
+        keyword={keyword}
+        setKeyword={setKeyword}
+        prefecture={prefecture}
+        setPrefecture={setPrefecture}
+        city={city}
+        setCity={setCity}
+        prefectureOptions={prefectureOptions}
+        cityOptions={cityOptions}
+      />
+
+      {/* 結果表示 */}
+      {filteredShelters.map((shelter) => (
         <div key={shelter.id} className="border p-4 rounded-lg shadow">
           <h2 className="text-xl font-semibold">{shelter.name}</h2>
           <p>状態: <strong>{shelter.status}</strong></p>
@@ -39,8 +43,8 @@ export default function EvacuationInfo() {
             在庫アラート:
             <span
               className={`ml-2 px-2 py-1 rounded-full text-sm 
-              ${shelter.stock_alert 
-                ? 'bg-red-100 text-red-700 font-semibold' 
+              ${shelter.stock_alert
+                ? 'bg-red-100 text-red-700 font-semibold'
                 : 'bg-green-100 text-green-700'}`}
             >
               {shelter.stock_alert ? '要確認' : '正常'}
