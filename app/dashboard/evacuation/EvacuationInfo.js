@@ -36,6 +36,7 @@ export default function EvacuationInfo() {
       />
 
       {/* 結果表示 */}
+      <p　className="pd-4 text-center font-bold">現在の避難情報はサンプルです。詳細は公式の避難情報をご確認ください。</p>
       {filteredShelters.map((shelter) => (
         <div key={shelter.id} className="border p-4 rounded-lg shadow">
           <h2 className="text-xl font-semibold">{shelter.name}</h2>
