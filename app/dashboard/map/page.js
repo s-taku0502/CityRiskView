@@ -8,8 +8,8 @@ export default function MapPage() {
     <div className="space-y-4">
       <h2 className="text-xl font-bold">🗺️ 現在地マップ</h2>
       <div className="bg-white rounded-lg shadow">
-        <Map />
-        {/* <DisasterMap /> */}
+        {/*<Map />*/}
+         {/*<DisasterMap />*/}
       </div>
     </div>
   );
