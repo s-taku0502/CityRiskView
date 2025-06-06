@@ -19,10 +19,10 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="ja" className={`${geistSans.variable} ${geistMono.variable}`}>
-      <body>
-        <div className="flex min-h-screen">
+      <body className="h-screen overflow-hidden">
+        <div className="flex h-full">
           <Sidebar />
-          <main className="flex-1">
+          <main className="flex-1 overflow-y-auto">
             {children}
           </main>
         </div>
