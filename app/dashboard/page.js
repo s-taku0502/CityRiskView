@@ -1,4 +1,4 @@
-// ダッシュボードのトップ（地図・分析とか）
+// 管理者用ダッシュボードのトップ（地図・分析とか）
 
 export default function DashboardPage() {
   return (

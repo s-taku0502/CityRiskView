@@ -28,8 +28,8 @@ useCurrentLocation を用いて現在地を取得。
 
 
 "use client";
-import Map from "@/app/dashboard/map/components/Map";
-import DisasterMap from "@/app/dashboard/map/components/DisasterMap";
+import Map from "@/app/map/components/Map";
+import DisasterMap from "@/app/map/components/DisasterMap";
 
 export default function MapPage() {
   return (
