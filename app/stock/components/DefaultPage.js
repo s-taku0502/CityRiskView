@@ -3,9 +3,14 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { mockShelters } from '@/app/evacuation/EvacuationMockData';
 import baseStockData from '@/data/ShelterStocks.json';
+import FilterPanel from '@/app/evacuation/components/FilterPanel';
 
 export default function StockViewPage() {
   const [shelterId, setShelterId] = useState('');
+  const [keyword, setKeyword] = useState('');
+  const [prefecture, setPrefecture] = useState('');
+  const [city, setCity] = useState('');
+
   const router = useRouter();
 
   const handleAccess = () => {
@@ -13,6 +18,24 @@ export default function StockViewPage() {
       router.push(`/stock/manage?id=${shelterId}`);
     }
   };
+
+  const prefectureOptions = [...new Set(mockShelters.map((s) => s.prefecture))];
+  const cityOptions = [...new Set(
+    mockShelters
+      .filter((s) => !prefecture || s.prefecture === prefecture)
+      .map((s) => s.city)
+  )];
+
+  const filteredShelters = mockShelters.filter((shelter) => {
+    const matchesKeyword =
+      !keyword ||
+      shelter.name_kana.some((k) =>
+        k.toLowerCase().includes(keyword.toLowerCase())
+      );
+    const matchesPrefecture = !prefecture || shelter.prefecture === prefecture;
+    const matchesCity = !city || shelter.city === city;
+    return matchesKeyword && matchesPrefecture && matchesCity;
+  });
 
   return (
     <div className="p-6 space-y-6">
@@ -40,11 +63,27 @@ export default function StockViewPage() {
         </button>
       </div>
 
-      {mockShelters.map((shelter) => {
+      {/* フィルター UI */}
+      <div className="mt-6">
+        <h4 className="font-semibold text-lg mb-2">避難所の絞り込み</h4>
+        <FilterPanel
+          keyword={keyword}
+          setKeyword={setKeyword}
+          prefecture={prefecture}
+          setPrefecture={setPrefecture}
+          city={city}
+          setCity={setCity}
+          prefectureOptions={prefectureOptions}
+          cityOptions={cityOptions}
+        />
+      </div>
+
+      {/* 絞り込んだ避難所の表示 */}
+      {filteredShelters.map((shelter) => {
         const stock = baseStockData[shelter.id] || [];
 
         return (
-          <div key={shelter.id} className="border rounded p-4 shadow bg-white">
+          <div key={shelter.id} className="border rounded p-4 shadow bg-white mt-6">
             <h3 className="text-xl font-semibold mb-2">{shelter.name}</h3>
 
             {Object.entries(
