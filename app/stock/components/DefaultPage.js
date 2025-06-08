@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { mockShelters } from '@/app/evacuation/EvacuationMockData';
 import baseStockData from '@/data/ShelterStocks.json';
-import FilterPanel from '@/app/evacuation/components/FilterPanel';
+import FilterPanel from '@/components/FilterPanel';
 
 export default function StockViewPage() {
   const [shelterId, setShelterId] = useState('');

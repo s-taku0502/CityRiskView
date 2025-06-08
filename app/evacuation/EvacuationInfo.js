@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { mockShelters } from './EvacuationMockData';
-import FilterPanel from './components/FilterPanel'; // パスは調整してね
+import FilterPanel from '../../components/FilterPanel'; // パスは調整してね
 
 export default function EvacuationInfo() {
   // 検索フィルターの設定
