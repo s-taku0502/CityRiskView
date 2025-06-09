@@ -59,7 +59,7 @@ export default function UpdatePage() {
                 {updates.map((update, index) => (
                     <div
                         key={index}
-                        className="p-4 bg-white shadow rounded-lg"
+                        className="p-4 shadow rounded-lg"
                     >
                         <h3 className="font-semibold text-lg mb-2">
                             {update.title}

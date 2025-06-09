@@ -68,7 +68,7 @@ export default function StockManagePage() {
             {items.map((item) => (
               <li
                 key={item.id}
-                className="flex flex-col sm:flex-row sm:items-center sm:justify-between border p-3 rounded bg-white shadow-sm"
+                className="flex flex-col sm:flex-row sm:items-center sm:justify-between border p-3 rounded shadow-sm"
               >
                 <div className="font-medium">{item.name}</div>
                 <div className="flex justify-end items-center space-x-4 mt-2 sm:mt-0">
@@ -84,13 +84,13 @@ export default function StockManagePage() {
                   </span>
                   <button
                     onClick={() => handleUse(item.id)}
-                    className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600"
+                    className="px-3 py-1 bg-red-500 rounded hover:bg-red-600"
                   >
                     利用
                   </button>
                   <button
                     onClick={() => handleAdd(item.id)}
-                    className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600"
+                    className="px-3 py-1 bg-green-500 rounded hover:bg-green-600"
                   >
                     補充
                   </button>

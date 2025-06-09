@@ -57,7 +57,7 @@ export default function StockViewPage() {
         />
         <button
           onClick={handleAccess}
-          className="ml-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          className="ml-2 px-4 py-2 bg-blue-600 rounded hover:bg-blue-700"
         >
           移動する
         </button>
@@ -84,7 +84,7 @@ export default function StockViewPage() {
         const stock = baseStockData[shelter.id] || [];
 
         return (
-          <div key={shelter.id} className="border rounded p-4 shadow bg-white mt-6">
+          <div key={shelter.id} className="border rounded p-4 shadow mt-6">
             <h3 className="text-xl font-semibold mb-2">{shelter.name}</h3>
 
             {Object.entries(
