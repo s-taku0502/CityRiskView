@@ -41,18 +41,19 @@ export default function EvacuationInfo() {
         <div key={shelter.id} className="border p-4 rounded-lg shadow">
           <h2 className="text-xl font-semibold">{shelter.name}</h2>
           <p>状態: <strong>{shelter.status}</strong></p>
-          <p>定員: {shelter.capacity}人 / 現在: {shelter.current_people}人</p>
           <p>
-            定員状況: 
+            定員:
+            <strong>{shelter.capacity}人</strong><br/>
+            現在:
             <span
-              className={`ml-2 px-2 py-1 rounded-full text-sm
+              className={`
               ${shelter.current_people >= shelter.capacity
-                ? 'text-red-700 font-semibold'
-                : shelter.current_people >= shelter.capacity * 0.8
-                ? 'text-yellow-500 font-semibold'
-                : ''}`}
+                  ? 'text-red-700'
+                  : shelter.current_people >= shelter.capacity * 0.8
+                    ? 'text-yellow-500'
+                    : ''}`}
             >
-              {`${shelter.current_people}/${shelter.capacity}人`}
+              <strong>{shelter.capacity}人</strong>
             </span>
           </p>
           <p>
@@ -60,8 +61,8 @@ export default function EvacuationInfo() {
             <span
               className={`ml-2 px-2 py-1 rounded-full text-sm 
               ${shelter.stock_alert
-                ? 'bg-red-100 text-red-700 font-semibold'
-                : 'bg-green-100 text-green-700'}`}
+                  ? 'bg-red-100 text-red-700 font-semibold'
+                  : 'bg-green-100 text-green-700'}`}
             >
               {shelter.stock_alert ? '要確認' : '正常'}
             </span>
