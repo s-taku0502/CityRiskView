@@ -53,7 +53,7 @@ export default function EvacuationInfo() {
                     ? 'text-yellow-500'
                     : ''}`}
             >
-              <strong>{shelter.capacity}人</strong>
+              <strong>{shelter.current_people}人</strong>
             </span>
           </p>
           <p>
