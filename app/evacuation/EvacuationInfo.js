@@ -41,18 +41,16 @@ export default function EvacuationInfo() {
         <div key={shelter.id} className="border p-4 rounded-lg shadow">
           <h2 className="text-xl font-semibold">{shelter.name}</h2>
           <p>状態: <strong>{shelter.status}</strong></p>
-          <p>定員: {shelter.capacity}人 / 現在: {shelter.current_people}人</p>
           <p>
-            定員状況: 
             <span
-              className={`ml-2 px-2 py-1 rounded-full text-sm
+              className={`
               ${shelter.current_people >= shelter.capacity
-                ? 'text-red-700 font-semibold'
+                ? 'text-red-700'
                 : shelter.current_people >= shelter.capacity * 0.8
-                ? 'text-yellow-500 font-semibold'
+                ? 'text-yellow-500'
                 : ''}`}
             >
-              {`${shelter.current_people}/${shelter.capacity}人`}
+              {`定員: ${shelter.current_people}人 / 現在: ${shelter.capacity}人`}
             </span>
           </p>
           <p>
