@@ -12,7 +12,6 @@ export default function SmartphoneTopPage() {
     { name: 'アラート', path: '/alert'},
     { name: '備蓄品管理', path: '/stock'},
     { name: '避難情報', path: '/evacuation'},
-    { name: 'ダッシュボード', path: '/dashboard'},
     { name: '設定', path: '/settings'},
   ];
 
