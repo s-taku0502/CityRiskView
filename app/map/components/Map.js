@@ -1,76 +1,107 @@
-// Map.js の変更の試し書き
-
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
+import 'mapbox-gl/dist/mapbox-gl.css';
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
 
 export default function Map() {
   const mapContainer = useRef(null);
   const mapInstance = useRef(null);
-
-  // 2地点の距離（メートル）を計算
-  const distance = (lat1, lon1, lat2, lon2) => {
-    const R = 6371e3;
-    const φ1 = (lat1 * Math.PI) / 180;
-    const φ2 = (lat2 * Math.PI) / 180;
-    const Δφ = ((lat2 - lat1) * Math.PI) / 180;
-    const Δλ = ((lon2 - lon1) * Math.PI) / 180;
-
-    const a = Math.sin(Δφ / 2) ** 2 +
-              Math.cos(φ1) * Math.cos(φ2) *
-              Math.sin(Δλ / 2) ** 2;
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-    return R * c;
-  };
+  const currentLocationMarker = useRef(null);
+  const [evacuationData, setEvacuationData] = useState(null);
 
   useEffect(() => {
     if (mapInstance.current) return;
 
-    // 初期化（東京駅を仮の中心）
+    // 初期化（富山市中央を中心に）
     mapInstance.current = new mapboxgl.Map({
       container: mapContainer.current,
       style: 'mapbox://styles/mapbox/streets-v11',
-      center: [139.7671, 35.6812],
-      zoom: 10,
+      center: [137.213470, 36.695834],
+      zoom: 15,
+      minZoom: 10,
+      maxZoom: 18
     });
 
-    // 現在地を取得
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const { latitude, longitude } = position.coords;
-        console.log('取得した現在地:', latitude, longitude);
+    // マップのロード完了を待つ
+    mapInstance.current.on('load', () => {
+      // 避難所データを読み込む
+      fetch('/data/evacuation.geojson')  // パスを修正
+        .then(response => response.json())
+        .then(data => {
+          setEvacuationData(data);
+          // 各避難所にマーカーを追加
+          data.features.forEach(feature => {
+            const { coordinates } = feature.geometry;
+            const { name, address, capacity, current_people } = feature.properties;
 
-        const distFromOsaka = distance(latitude, longitude, 34.6937, 135.5023);
+            new mapboxgl.Marker({ color: '#FF0000' })
+              .setLngLat(coordinates)
+              .setPopup(
+                new mapboxgl.Popup({ offset: 25 })
+                  .setHTML(`
+                    <h3 class="font-bold">${name}</h3>
+                    <p>${address}</p>
+                    <p>収容可能人数: ${capacity}人</p>
+                    <p>現在の避難者: ${current_people}人</p>
+                  `)
+              )
+              .addTo(mapInstance.current);
+          });
+        })
+        .catch(error => console.error('避難所データの読み込みに失敗:', error));
 
-        if (distFromOsaka < 500000) {
-          // マーカーを追加せず、地図の移動のみを行う
-          mapInstance.current?.flyTo({
+      // 現在地を取得
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+
+          // 既存のマーカーがあれば削除
+          if (currentLocationMarker.current) {
+            currentLocationMarker.current.remove();
+          }
+
+          // 現在地マーカーを追加
+          currentLocationMarker.current = new mapboxgl.Marker({ 
+            color: '#0000FF',
+            scale: 1.2,
+            rotation: 0
+          })
+            .setLngLat([longitude, latitude])
+            .setPopup(
+              new mapboxgl.Popup({ offset: 25 })
+                .setHTML(`
+                  <h3 class="font-bold">現在地</h3>
+                  <p>緯度: ${latitude.toFixed(6)}</p>
+                  <p>経度: ${longitude.toFixed(6)}</p>
+                `)
+            )
+            .addTo(mapInstance.current);
+
+          // 現在地を中心に表示
+          mapInstance.current.flyTo({
             center: [longitude, latitude],
             zoom: 14,
-            essential: true,
+            essential: true
           });
-
-          // マーカーを追加する場合は以下のコメントを外す
-          // new mapboxgl.Marker({ color: 'blue' })
-          //   .setLngLat([longitude, latitude])
-          //   .addTo(mapInstance.current);
-        } else {
-          console.warn('取得した位置が異常なためスキップされました。');
+        },
+        (error) => console.error('現在地の取得に失敗:', error),
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0
         }
-      },
-      (error) => {
-        console.error('現在地の取得に失敗:', error);
-      },
-      {
-        enableHighAccuracy: true, // 高精度な位置情報を取得
-        timeout: 10000, // タイムアウト時間（ミリ秒）
-        maximumAge: 0, // キャッシュを使用しない
+      );
+    });
+
+    // クリーンアップ
+    return () => {
+      if (mapInstance.current) {
+        mapInstance.current.remove();
       }
-    );
+    };
   }, []);
 
   return (
