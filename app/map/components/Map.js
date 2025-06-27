@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
+import LocationButton from './LocationButton';
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
 
@@ -104,9 +105,51 @@ export default function Map() {
     };
   }, []);
 
+  // 現在地取得のロジックを関数として切り出し
+  const getCurrentLocation = () => {
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+
+        if (currentLocationMarker.current) {
+          currentLocationMarker.current.remove();
+        }
+
+        currentLocationMarker.current = new mapboxgl.Marker({ 
+          color: '#00AAAA',
+          scale: 1.2,
+          rotation: 0
+        })
+          .setLngLat([longitude, latitude])
+          .setPopup(
+            new mapboxgl.Popup({ offset: 25 })
+              .setHTML(`
+                <h3 class="font-bold">現在地</h3>
+                <p>緯度: ${latitude.toFixed(6)}</p>
+                <p>経度: ${longitude.toFixed(6)}</p>
+              `)
+          )
+          .addTo(mapInstance.current);
+
+        mapInstance.current.flyTo({
+          center: [longitude, latitude],
+          zoom: 14,
+          essential: true
+        });
+      },
+      (error) => console.error('現在地の取得に失敗:', error),
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0
+      }
+    );
+  };
+
   return (
-    <div className="w-full h-full">
+    <div className="w-full h-full relative">
       <div ref={mapContainer} className="w-full h-[calc(100vh-200px)] rounded-xl" />
+      <LocationButton onClick={getCurrentLocation} />
     </div>
   );
 }
