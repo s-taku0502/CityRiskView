@@ -16,11 +16,11 @@ export default function Map() {
   useEffect(() => {
     if (mapInstance.current) return;
 
-    // 初期化（富山市中央を中心に）
+    // 初期化（初期位置：東京駅）
     mapInstance.current = new mapboxgl.Map({
       container: mapContainer.current,
       style: 'mapbox://styles/mapbox/streets-v11',
-      center: [137.213470, 36.695834],
+      center: [139.7673068, 35.6809591],
       zoom: 15,
       minZoom: 10,
       maxZoom: 18
@@ -38,8 +38,11 @@ export default function Map() {
             const { coordinates } = feature.geometry;
             const { name, address, capacity, current_people } = feature.properties;
 
+            // 座標の順序を修正（[緯度, 経度] -> [経度, 緯度]）
+            const [lat, lng] = coordinates;
+            
             new mapboxgl.Marker({ color: '#FF0000' })
-              .setLngLat(coordinates)
+              .setLngLat([lng, lat])  // 正しい順序で座標をセット
               .setPopup(
                 new mapboxgl.Popup({ offset: 25 })
                   .setHTML(`
