@@ -34,8 +34,8 @@ export default function MapPage() {
     <div className="space-y-4">
       <h2 className="text-xl font-bold">現在地マップ</h2>
       <div className="rounded-lg shadow">
-        <p>ただいま地図情報においてメンテナンスをおこなっています。</p>
-        {/* <Map /> */}
+        {/* <p>ただいま地図情報においてメンテナンスをおこなっています。</p> */}
+        <Map />
       </div>
     </div>
   );
