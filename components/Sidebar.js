@@ -4,33 +4,60 @@
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
+import eventData from "../data/event_date.json";
 
 export default function Sidebar() {
   const [isOpen, setIsOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-  const defined_smartphone_width = 768
+  const [menuItems, setMenuItems] = useState([]);
+  const defined_smartphone_width = 768;
 
   useEffect(() => {
     const checkIsMobile = () => {
       setIsMobile(window.innerWidth < defined_smartphone_width);
     };
-    
+
+    const setupMenuItems = () => {
+      const currentDate = new Date();
+      const recruitmentStart = new Date(eventData.recruitmentStartDate);
+      const eventDate = new Date(eventData.eventDate);
+
+      let MenuItems = [];
+
+      // 募集開始日からイベント日の間かチェック
+      if (currentDate >= recruitmentStart && currentDate <= eventDate) {
+        MenuItems = [
+          { href: "/", text: "ダッシュボード" },
+          { href: "/map", text: "地図" },
+          { href: "/stock", text: "備蓄情報" },
+          { href: "/alert", text: "アラート情報" },
+          { href: "/evacuation", text: "避難情報" },
+          { href: "/update", text: "更新情報" },
+          { href: "/only_events", text: "システム改善アンケート" },
+        ];
+      } else {
+        MenuItems = [
+          { href: "/", text: "ダッシュボード" },
+          { href: "/map", text: "地図" },
+          { href: "/stock", text: "備蓄情報" },
+          { href: "/alert", text: "アラート情報" },
+          { href: "/evacuation", text: "避難情報" },
+          { href: "/update", text: "更新情報" },
+        ];
+      }
+
+      setMenuItems(MenuItems);
+    };
+
     checkIsMobile();
+    setupMenuItems();
+
     window.addEventListener('resize', checkIsMobile);
-    
+
     return () => {
       window.removeEventListener('resize', checkIsMobile);
     };
   }, []);
-
-  const menuItems = [
-    { href: "/", text: "ダッシュボード" },
-    { href: "/map", text: "地図" },
-    { href: "/stock", text: "備蓄情報" },
-    { href: "/alert", text: "アラート情報" },
-    { href: "/evacuation", text: "避難情報" },
-    { href: "/update", text: "更新情報" },
-  ];
 
   const toggleMenu = () => {
     setIsOpen(!isOpen);
@@ -61,9 +88,8 @@ export default function Sidebar() {
           </svg>
         </button>
 
-        <div className={`fixed inset-0 bg-gray-800 text-white transform ${
-          isOpen ? "translate-x-0" : "translate-x-full"
-        } transition-transform duration-300 ease-in-out z-40`}>
+        <div className={`fixed inset-0 bg-gray-800 text-white transform ${isOpen ? "translate-x-0" : "translate-x-full"
+          } transition-transform duration-300 ease-in-out z-40`}>
           <div className="flex flex-col p-4 mt-16">
             <nav className="flex flex-col gap-4">
               {menuItems.map((item) => (
