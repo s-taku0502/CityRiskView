@@ -23,7 +23,8 @@ export default function Map() {
       center: [139.7673068, 35.6809591],
       zoom: 15,
       minZoom: 10,
-      maxZoom: 18
+      maxZoom: 18,
+      attributionControl: false,  // ← この1行を追加
     });
 
     // マップのロード完了を待つ
