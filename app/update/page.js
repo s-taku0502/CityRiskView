@@ -1,4 +1,10 @@
+import { title } from "process";
+
 const updates = [
+    {
+        title: "2025年7月18日",
+        content: "一部仕様変更をおこないました。"
+    },
     {
         title: "2025年6月7日",
         content: "一般利用者向けのURLを調整しました。\n今後は https://cityriskview.vercel.app/ よりアクセスできます。"
