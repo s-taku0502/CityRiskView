@@ -1,21 +1,8 @@
-'use client';
+'use client'
 
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import Link from 'next/link'
 
-export default function SmartphoneTopPage() {
-  const router = useRouter();
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-
-  const menuItems = [
-    { name: '避難所マップ', path: '/map'},
-    { name: 'アラート', path: '/alert'},
-    { name: '備蓄品管理', path: '/stock'},
-    { name: '避難情報', path: '/evacuation'},
-    { name: '設定', path: '/settings'},
-  ];
-
+export default function HomePage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
       <div className="max-w-md w-full space-y-8 text-center">
@@ -33,14 +20,14 @@ export default function SmartphoneTopPage() {
             href="/admin"
             className="block w-full bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-lg text-lg font-medium transition-colors"
           >
-            🔐 管理者ログイン
+            管理者ログイン
           </Link>
           
           <Link 
             href="/map"
             className="block w-full bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg text-lg font-medium transition-colors"
           >
-            🗺️ 一般向けマップ
+            一般向けマップ
           </Link>
         </div>
 
@@ -50,5 +37,5 @@ export default function SmartphoneTopPage() {
         </div>
       </div>
     </div>
-  );
+  )
 }
