@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
@@ -16,29 +17,38 @@ export default function SmartphoneTopPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-100 p-4">
-      <header className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">CityRiskView</h1>
-        <p className="text-sm text-gray-600">災害情報・避難支援アプリ</p>
-      </header>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+      <div className="max-w-md w-full space-y-8 text-center">
+        <div>
+          <h1 className="text-4xl font-bold text-gray-900 mb-2">
+            CityRiskView
+          </h1>
+          <p className="text-lg text-gray-600">
+            都市リスク管理システム
+          </p>
+        </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        {menuItems.map((item) => (
-          <button
-            key={item.path}
-            onClick={() => router.push(item.path)}
-            className="flex flex-col items-center justify-center p-6 bg-white rounded-lg shadow-md hover:bg-gray-50 active:bg-gray-100 transition-colors"
+        <div className="space-y-4">
+          <Link 
+            href="/admin"
+            className="block w-full bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-lg text-lg font-medium transition-colors"
           >
-            <span className="text-3xl mb-2">{item.icon}</span>
-            <span className="text-gray-700 font-medium">{item.name}</span>
-          </button>
-        ))}
-      </div>
+            🔐 管理者ログイン
+          </Link>
+          
+          <Link 
+            href="/map"
+            className="block w-full bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg text-lg font-medium transition-colors"
+          >
+            🗺️ 一般向けマップ
+          </Link>
+        </div>
 
-      <footer className="mt-8 text-center text-sm text-gray-500">
-        <p>緊急時は直ちに避難してください</p>
-        <p className="mt-1">最寄りの避難所をご確認ください</p>
-      </footer>
+        <div className="text-sm text-gray-500">
+          <p>管理者: 備蓄管理・QRスキャン機能</p>
+          <p>一般: マップ表示・避難所情報</p>
+        </div>
+      </div>
     </div>
   );
 }
