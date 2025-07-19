@@ -4,12 +4,14 @@ import { useState, useEffect } from 'react'
 import AuthGuard from '@/components/AuthGuard'
 import Map from '@/app/map/page'
 import StockManagement from './components/StockManagement'
+import EventCodeManagement from './components/EventCodeManagement'
+import GuestManagement from './components/GuestManagement'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 
 export default function AdminPage() {
   const [currentView, setCurrentView] = useState('map')
-  const [selectedShelter, setSelectedShelter] = useState(null) // ← 復活
+  const [selectedShelter, setSelectedShelter] = useState(null)
   const [shelters, setShelters] = useState([])
   const router = useRouter()
 
@@ -50,6 +52,10 @@ export default function AdminPage() {
         return <StockManagement selectedShelter={selectedShelter} />
       case 'qr':
         return <div className="bg-white rounded-lg shadow p-6">QRスキャン機能（開発中）</div>
+      case 'events':
+        return <EventCodeManagement />
+      case 'guests':
+        return <GuestManagement />
       case 'alerts':
         return <div className="bg-white rounded-lg shadow p-6">通知管理（開発中）</div>
       case 'stats':
@@ -58,7 +64,7 @@ export default function AdminPage() {
         return (
           <div className="bg-white rounded-lg shadow p-6">
             <div className="w-full">
-              <Map onShelterSelect={setSelectedShelter} shelters={shelters} /> {/* ← 修正 */}
+              <Map onShelterSelect={setSelectedShelter} shelters={shelters} />
             </div>
           </div>
         )
@@ -136,6 +142,28 @@ export default function AdminPage() {
                       }`}
                     >
                       QRスキャン
+                    </button>
+                    
+                    <button
+                      onClick={() => setCurrentView('events')}
+                      className={`w-full px-4 py-2 rounded-md text-sm font-medium ${
+                        currentView === 'events'
+                          ? 'bg-orange-600 text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      イベント管理
+                    </button>
+                    
+                    <button
+                      onClick={() => setCurrentView('guests')}
+                      className={`w-full px-4 py-2 rounded-md text-sm font-medium ${
+                        currentView === 'guests'
+                          ? 'bg-teal-600 text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      ゲスト管理
                     </button>
                     
                     <button
