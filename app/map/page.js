@@ -33,23 +33,11 @@ export default function MapPage() {
   return (
     <div className="space-y-4">
       <h2 className="text-xl font-bold">周辺の避難所情報</h2>
-      <div className="rounded-lg shadow">
+      <div className="rounded-lg">
         {/* <p>ただいま地図情報においてメンテナンスをおこなっています。</p> */}
         <Map />
         {/*MapBox 著作権のカスタム表記 */}
-        <div className="absolute bottom-2 text-xs text-gray-500 bg-white bg-opacity-80 px-2 py-1 rounded">
-          © <a href="https://www.mapbox.com/about/maps/" target="_blank" rel="noopener noreferrer" className="underline">Mapbox</a> |
-          © <a href="https://www.openstreetmap.org/about/" target="_blank" rel="noopener noreferrer" className="underline">OpenStreetMap</a>
-        </div>
       </div>
-      ページが正しく表示されない場合は、
-      <button
-        onClick={() => window.location.reload()}
-        className="mt-2 text-blue-600 font-bold py-2 px-4 rounded"
-      >
-        こちら
-      </button>
-      をクリックして再読み込みしてください。
     </div>
   );
 }

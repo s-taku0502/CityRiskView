@@ -3,11 +3,12 @@
 import { useEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
-import LocationButton from './LocationButton';
+import LocationButton from '@/app/map/components/LocationButton';
+import { supabase } from '@/lib/supabase';
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
 
-export default function Map() {
+export default function Map({ onShelterSelect }) {
   const mapContainer = useRef(null);
   const mapInstance = useRef(null);
   const currentLocationMarker = useRef(null);
@@ -16,6 +17,29 @@ export default function Map() {
   useEffect(() => {
     if (mapInstance.current) return;
 
+    // DOM要素が存在することを確認
+    if (!mapContainer.current) {
+      console.error('Map container is not available');
+      return;
+    }
+
+    // コンテナの寸法を確認
+    const containerRect = mapContainer.current.getBoundingClientRect();
+    if (containerRect.width === 0 || containerRect.height === 0) {
+      console.warn('Map container has zero dimensions, retrying...');
+      setTimeout(() => {
+        // 少し待ってから再試行
+        if (mapContainer.current && !mapInstance.current) {
+          initializeMap();
+        }
+      }, 100);
+      return;
+    }
+
+    initializeMap();
+  }, []);
+
+  const initializeMap = () => {
     // 初期化（初期位置：東京駅）
     mapInstance.current = new mapboxgl.Map({
       container: mapContainer.current,
@@ -24,103 +48,107 @@ export default function Map() {
       zoom: 15,
       minZoom: 10,
       maxZoom: 18,
-      attributionControl: false,  // ← この1行を追加
+      attributionControl: false,
     });
 
     // マップのロード完了を待つ
     mapInstance.current.on('load', () => {
-      // 避難所データを読み込む
-      fetch('/data/evacuation.geojson')  // パスを修正
-        .then(response => response.json())
-        .then(data => {
-          setEvacuationData(data);
-          // 各避難所にマーカーを追加
-          data.features.forEach(feature => {
-            const { coordinates } = feature.geometry;
-            const { name, address, capacity, current_people } = feature.properties;
-
-            // 座標の順序を修正（[緯度, 経度] -> [経度, 緯度]）
-            const [lat, lng] = coordinates;
-            
-            new mapboxgl.Marker({ color: '#FF0000' })
-              .setLngLat([lng, lat])  // 正しい順序で座標をセット
-              .setPopup(
-                new mapboxgl.Popup({ offset: 25 })
-                  .setHTML(`
-                    <h3 class="font-bold">${name}</h3>
-                    <p>${address}</p>
-                    <p>収容可能人数: ${capacity}人</p>
-                    <p>現在の避難者: ${current_people}人</p>
-                  `)
-              )
-              .addTo(mapInstance.current);
-          });
-        })
-        .catch(error => console.error('避難所データの読み込みに失敗:', error));
+      // 避難所データをSupabaseから読み込む
+      loadSheltersFromSupabase();
 
       // 現在地を取得
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const { latitude, longitude } = position.coords;
+      getCurrentLocation();
+    });
+  };
 
-          // 既存のマーカーがあれば削除
-          if (currentLocationMarker.current) {
-            currentLocationMarker.current.remove();
-          }
+  // Supabaseから避難所データを読み込む
+  const loadSheltersFromSupabase = async () => {
+    try {
+      const { data: shelters, error } = await supabase
+        .from('shelters')
+        .select('*');
 
-          // 現在地マーカーを追加
-          currentLocationMarker.current = new mapboxgl.Marker({ 
-            color: '#0000FF',
-            scale: 1.2,
-            rotation: 0
-          })
+      if (error) throw error;
+
+      // mapInstanceが存在することを確認，デバッグ用
+      if (!mapInstance.current) {
+        console.error('Map instance is not available for adding shelters');
+        return;
+      }
+
+      // 各避難所にマーカーを追加
+      shelters.forEach(shelter => {
+        const { latitude, longitude, name, address, capacity, current_people, stock } = shelter;
+
+        let stockItems = [];
+        try {
+          stockItems = typeof stock === 'string' ? JSON.parse(stock) : stock || [];
+        } catch (err) {
+          console.warn('備蓄情報のパースに失敗:', err);
+        }
+
+        // mapInstanceが存在することを再確認
+        if (mapInstance.current) {
+          const marker = new mapboxgl.Marker({ color: '#FF0000' })
             .setLngLat([longitude, latitude])
             .setPopup(
               new mapboxgl.Popup({ offset: 25 })
                 .setHTML(`
-                  <h3 class="font-bold">現在地</h3>
-                  <p>緯度: ${latitude.toFixed(6)}</p>
-                  <p>経度: ${longitude.toFixed(6)}</p>
+                  <h3 class="font-bold">${name}</h3>
+                  <p>${address}</p>
+                  <p>収容可能人数: ${capacity}人</p>
+                  <p>現在の避難者: ${current_people}人</p>
+                  <div class="mt-2">
+                    <strong>備蓄情報:</strong>
+                    <ul class="list-disc list-inside text-sm">
+                      ${stockItems.map(item => `<li>${item.item}: ${item.quantity}</li>`).join('')}
+                    </ul>
+                  </div>
                 `)
             )
             .addTo(mapInstance.current);
 
-          // 現在地を中心に表示
-          mapInstance.current.flyTo({
-            center: [longitude, latitude],
-            zoom: 14,
-            essential: true
-          });
-        },
-        (error) => console.error('現在地の取得に失敗:', error),
-        {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 0
+          // 管理者画面でのマーカークリック処理
+          if (onShelterSelect) {
+            marker.getElement().addEventListener('click', () => {
+              onShelterSelect(shelter);
+            });
+          }
         }
-      );
-    });
+      });
 
-    // クリーンアップ
-    return () => {
-      if (mapInstance.current) {
-        mapInstance.current.remove();
-      }
-    };
-  }, []);
+      setEvacuationData({ features: shelters });
+    } catch (error) {
+      console.error('避難所データの読み込みに失敗:', error);
+    }
+  };
 
   // 現在地取得のロジックを関数として切り出し
   const getCurrentLocation = () => {
+    // mapInstanceが存在することを確認
+    if (!mapInstance.current) {
+      console.error('Map instance is not available');
+      return;
+    }
+
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const { latitude, longitude } = position.coords;
 
+        // 既存のマーカーを削除
         if (currentLocationMarker.current) {
           currentLocationMarker.current.remove();
         }
 
-        currentLocationMarker.current = new mapboxgl.Marker({ 
-          color: '#00AAAA',
+        // mapInstanceが再度存在することを確認してからマーカーを作成
+        if (!mapInstance.current) {
+          console.error('Map instance became unavailable during geolocation');
+          return;
+        }
+
+        // 新しいマーカーを作成
+        currentLocationMarker.current = new mapboxgl.Marker({
+          color: '#0000FF',
           scale: 1.2,
           rotation: 0
         })
@@ -135,11 +163,14 @@ export default function Map() {
           )
           .addTo(mapInstance.current);
 
-        mapInstance.current.flyTo({
-          center: [longitude, latitude],
-          zoom: 14,
-          essential: true
-        });
+        // mapInstanceが存在することを再度確認してからflyToを実行
+        if (mapInstance.current) {
+          mapInstance.current.flyTo({
+            center: [longitude, latitude],
+            zoom: 14,
+            essential: true
+          });
+        }
       },
       (error) => console.error('現在地の取得に失敗:', error),
       {
@@ -151,9 +182,33 @@ export default function Map() {
   };
 
   return (
-    <div className="w-full h-full relative">
-      <div ref={mapContainer} className="w-full h-[calc(100vh-200px)] rounded-xl" />
-      <LocationButton onClick={getCurrentLocation} />
+    <div>
+      <div className="w-full">
+        <div className="relative w-full absolute inset-0">
+          <div ref={mapContainer} className="w-full h-[calc(100vh-200px)] rounded-xl" />
+          <LocationButton
+            onClick={() => {
+              if (mapInstance.current) {
+                getCurrentLocation();
+              } else {
+                console.error('Map is not ready yet');
+              }
+            }}
+          />
+          <div className="absolute bottom-2 text-xs text-gray-500 bg-white bg-opacity-80 px-2 py-1 rounded">
+            © <a href="https://www.mapbox.com/about/maps/" target="_blank" rel="noopener noreferrer" className="underline">Mapbox</a> |
+            © <a href="https://www.openstreetmap.org/about/" target="_blank" rel="noopener noreferrer" className="underline">OpenStreetMap</a>
+          </div>
+        </div>
+      </div>
+        ページが正しく表示されない場合は、
+        <button
+          onClick={() => window.location.reload()}
+          className="mt-2 text-blue-600 font-bold rounded"
+        >
+          こちら
+        </button>
+        をクリックして再読み込みしてください。
     </div>
   );
 }
