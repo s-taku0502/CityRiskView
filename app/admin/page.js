@@ -33,7 +33,9 @@ export default function AdminPage() {
             <h2 className="text-lg font-medium text-gray-900 mb-4">
               避難所マップ
             </h2>
-            <Map onShelterSelect={setSelectedShelter} />
+            <div className="h-96 w-full">
+              <Map onShelterSelect={setSelectedShelter} />
+            </div>
           </div>
         )
     }
