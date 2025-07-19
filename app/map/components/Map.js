@@ -23,6 +23,23 @@ export default function Map({ onShelterSelect }) {
       return;
     }
 
+    // コンテナの寸法を確認
+    const containerRect = mapContainer.current.getBoundingClientRect();
+    if (containerRect.width === 0 || containerRect.height === 0) {
+      console.warn('Map container has zero dimensions, retrying...');
+      setTimeout(() => {
+        // 少し待ってから再試行
+        if (mapContainer.current && !mapInstance.current) {
+          initializeMap();
+        }
+      }, 100);
+      return;
+    }
+
+    initializeMap();
+  }, []);
+
+  const initializeMap = () => {
     // 初期化（初期位置：東京駅）
     mapInstance.current = new mapboxgl.Map({
       container: mapContainer.current,
@@ -42,14 +59,7 @@ export default function Map({ onShelterSelect }) {
       // 現在地を取得
       getCurrentLocation();
     });
-
-    // クリーンアップ
-    return () => {
-      if (mapInstance.current) {
-        mapInstance.current.remove();
-      }
-    };
-  }, []);
+  };
 
   // Supabaseから避難所データを読み込む
   const loadSheltersFromSupabase = async () => {
