@@ -47,9 +47,6 @@ export default function AdminPage() {
       default:
         return (
           <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-lg font-medium text-gray-900 mb-4">
-              避難所マップ
-            </h2>
             <div className="w-full">
               <Map onShelterSelect={setSelectedShelter} shelters={shelters} /> {/* ← 修正 */}
             </div>
@@ -63,12 +60,12 @@ export default function AdminPage() {
       <div className="min-h-screen bg-gray-100">
         {/* ヘッダー */}
         <header className="bg-white shadow-sm border-b">
-          <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center py-4">
+          <div className="max-w-7xl">
+            <div className="flex justify-between items-center py-1">
               <h1 className="text-2xl font-bold text-gray-900">
                 CityRiskView 管理画面
               </h1>
-              <div className="flex items-center space-x-4">
+              <div className="flex items-center">
                 {selectedShelter && (
                   <span className="text-sm text-gray-600">
                     選択中: {selectedShelter.name}
@@ -86,8 +83,8 @@ export default function AdminPage() {
         </header>
 
         {/* メインコンテンツ */}
-        <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-          <div className="px-4 py-6 sm:px-0">
+        <main className="max-w-7xl py-1">
+          <div className="py-1">
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
               
               {/* 左側: 管理パネル */}
