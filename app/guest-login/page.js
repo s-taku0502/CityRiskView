@@ -11,15 +11,51 @@ export default function GuestLoginPage() {
   const [error, setError] = useState('')
   const router = useRouter()
 
+  // イベントコードの有効性チェックを更新
+  const isValidEventCode = async (code) => {
+    try {
+      const { data, error } = await supabase
+        .from('event_codes')
+        .select('*')
+        .eq('code', code.toUpperCase())
+        .eq('is_active', true)
+        .single()
+
+      if (error) return false
+
+      // 期間チェック
+      const now = new Date()
+      if (data.start_date && new Date(data.start_date) > now) return false
+      if (data.end_date && new Date(data.end_date) < now) return false
+
+      // 参加者数チェック（必要に応じて）
+      if (data.max_participants) {
+        const { count } = await supabase
+          .from('guest_accounts')
+          .select('*', { count: 'exact', head: true })
+          .eq('event_code', code.toUpperCase())
+          .eq('is_active', true)
+
+        if (count >= data.max_participants) return false
+      }
+
+      return true
+    } catch (error) {
+      console.error('Event code validation error:', error)
+      return false
+    }
+  }
+
   const handleGuestLogin = async (e) => {
     e.preventDefault()
     setLoading(true)
     setError('')
 
     try {
-      // イベントコードの有効性チェック（必要に応じて）
-      if (!isValidEventCode(eventCode)) {
-        setError('無効なイベントコードです')
+      // イベントコードの有効性チェック
+      const isValid = await isValidEventCode(eventCode)
+      if (!isValid) {
+        setError('無効なイベントコードです。コードが正しいか、イベント期間内かご確認ください。')
         setLoading(false)
         return
       }
@@ -86,13 +122,6 @@ export default function GuestLoginPage() {
     }
 
     setLoading(false)
-  }
-
-  // イベントコードの有効性チェック（必要に応じてカスタマイズ）
-  const isValidEventCode = (code) => {
-    // 例: 特定のパターンのコードのみ許可
-    const validCodes = ['EVENT2025', 'DEMO2025', 'TEST2025']
-    return validCodes.includes(code.toUpperCase())
   }
 
   return (
