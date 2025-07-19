@@ -11,11 +11,31 @@ export default function EventCodeManagement() {
     name: '',
     description: '',
     startDate: '',
+    startTime: '09:00',
     endDate: '',
+    endTime: '18:00',
     maxParticipants: ''
   })
   const [editingId, setEditingId] = useState(null)
   const [loading, setLoading] = useState(true)
+
+  // 日本時間への変換ユーティリティ
+  const toJSTDateTime = (date, time) => {
+    if (!date) return null
+    const dateTimeString = `${date}T${time}:00`
+    const localDate = new Date(dateTimeString)
+    return localDate.toISOString()
+  }
+
+  const fromJSTDateTime = (isoString) => {
+    if (!isoString) return { date: '', time: '' }
+    const date = new Date(isoString)
+    const localDate = new Date(date.getTime() - (date.getTimezoneOffset() * 60000))
+    return {
+      date: localDate.toISOString().split('T')[0],
+      time: localDate.toISOString().split('T')[1].slice(0, 5)
+    }
+  }
 
   useEffect(() => {
     fetchEventCodes()
@@ -44,8 +64,8 @@ export default function EventCodeManagement() {
         code: formData.code.toUpperCase(),
         name: formData.name,
         description: formData.description,
-        start_date: formData.startDate || null,
-        end_date: formData.endDate || null,
+        start_date: toJSTDateTime(formData.startDate, formData.startTime),
+        end_date: toJSTDateTime(formData.endDate, formData.endTime),
         max_participants: formData.maxParticipants ? parseInt(formData.maxParticipants) : null,
         updated_at: new Date().toISOString()
       }
@@ -79,7 +99,9 @@ export default function EventCodeManagement() {
       name: '',
       description: '',
       startDate: '',
+      startTime: '09:00',
       endDate: '',
+      endTime: '18:00',
       maxParticipants: ''
     })
     setEditingId(null)
@@ -87,12 +109,17 @@ export default function EventCodeManagement() {
   }
 
   const editEventCode = (eventCode) => {
+    const startDateTime = fromJSTDateTime(eventCode.start_date)
+    const endDateTime = fromJSTDateTime(eventCode.end_date)
+    
     setFormData({
       code: eventCode.code,
       name: eventCode.name,
       description: eventCode.description || '',
-      startDate: eventCode.start_date ? eventCode.start_date.split('T')[0] : '',
-      endDate: eventCode.end_date ? eventCode.end_date.split('T')[0] : '',
+      startDate: startDateTime.date,
+      startTime: startDateTime.time || '09:00',
+      endDate: endDateTime.date,
+      endTime: endDateTime.time || '18:00',
       maxParticipants: eventCode.max_participants || ''
     })
     setEditingId(eventCode.id)
@@ -127,6 +154,20 @@ export default function EventCodeManagement() {
     } catch (error) {
       console.error('Error deleting event code:', error)
     }
+  }
+
+  // 日本時間での表示用フォーマット
+  const formatJSTDateTime = (isoString) => {
+    if (!isoString) return '設定なし'
+    const date = new Date(isoString)
+    return date.toLocaleString('ja-JP', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: 'Asia/Tokyo'
+    })
   }
 
   if (loading) {
@@ -191,26 +232,42 @@ export default function EventCodeManagement() {
             
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                開始日
+                開始日時（日本時間）
               </label>
-              <input
-                type="date"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                value={formData.startDate}
-                onChange={(e) => setFormData({...formData, startDate: e.target.value})}
-              />
+              <div className="flex space-x-2">
+                <input
+                  type="date"
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-md"
+                  value={formData.startDate}
+                  onChange={(e) => setFormData({...formData, startDate: e.target.value})}
+                />
+                <input
+                  type="time"
+                  className="w-32 px-3 py-2 border border-gray-300 rounded-md"
+                  value={formData.startTime}
+                  onChange={(e) => setFormData({...formData, startTime: e.target.value})}
+                />
+              </div>
             </div>
             
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                終了日
+                終了日時（日本時間）
               </label>
-              <input
-                type="date"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                value={formData.endDate}
-                onChange={(e) => setFormData({...formData, endDate: e.target.value})}
-              />
+              <div className="flex space-x-2">
+                <input
+                  type="date"
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-md"
+                  value={formData.endDate}
+                  onChange={(e) => setFormData({...formData, endDate: e.target.value})}
+                />
+                <input
+                  type="time"
+                  className="w-32 px-3 py-2 border border-gray-300 rounded-md"
+                  value={formData.endTime}
+                  onChange={(e) => setFormData({...formData, endTime: e.target.value})}
+                />
+              </div>
             </div>
             
             <div>
@@ -251,7 +308,7 @@ export default function EventCodeManagement() {
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">コード</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">イベント名</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">期間</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">期間（日本時間）</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">参加者数</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">状態</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">操作</th>
@@ -271,12 +328,12 @@ export default function EventCodeManagement() {
                     )}
                   </div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {eventCode.start_date && eventCode.end_date ? (
-                    <>
-                      {new Date(eventCode.start_date).toLocaleDateString('ja-JP')} - 
-                      {new Date(eventCode.end_date).toLocaleDateString('ja-JP')}
-                    </>
+                <td className="px-6 py-4 text-sm text-gray-500">
+                  {eventCode.start_date || eventCode.end_date ? (
+                    <div className="space-y-1">
+                      <div>開始: {formatJSTDateTime(eventCode.start_date)}</div>
+                      <div>終了: {formatJSTDateTime(eventCode.end_date)}</div>
+                    </div>
                   ) : (
                     '期間指定なし'
                   )}

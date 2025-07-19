@@ -78,8 +78,8 @@ export default function GuestLoginPage() {
         isGuest: true
       }))
 
-      // 管理画面へリダイレクト
-      router.push('/admin')
+      // ゲスト専用ダッシュボードへリダイレクト
+      router.push('/guest-dashboard')
       
     } catch (error) {
       console.error('Guest login error:', error)
@@ -134,6 +134,11 @@ export default function GuestLoginPage() {
           <p className="mt-2 text-center text-sm text-gray-600">
             CityRiskView デモ・イベント用
           </p>
+          <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+            <p className="text-sm text-blue-700 text-center">
+              閲覧専用モードでアクセスできます
+            </p>
+          </div>
         </div>
         
         <form className="mt-8 space-y-6" onSubmit={handleGuestLogin}>
@@ -185,10 +190,13 @@ export default function GuestLoginPage() {
             </button>
           </div>
           
-          <div className="text-center">
-            <a href="/login" className="text-indigo-600 hover:text-indigo-500 text-sm">
+          <div className="text-center space-y-2">
+            <a href="/login" className="text-indigo-600 hover:text-indigo-500 text-sm block">
               管理者としてログイン
             </a>
+            <p className="text-xs text-gray-500">
+              ゲストモードでは全ての情報を閲覧できますが、データの変更はできません
+            </p>
           </div>
         </form>
       </div>

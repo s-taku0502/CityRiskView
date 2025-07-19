@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 
-export default function StockManagement({ selectedShelter }) {
+export default function StockManagement({ selectedShelter, isGuest = false }) {
   const [stockData, setStockData] = useState([])
   const [bihinItems, setBihinItems] = useState([])
   const [loading, setLoading] = useState(false)
@@ -86,24 +86,42 @@ export default function StockManagement({ selectedShelter }) {
       {/* ヘッダー */}
       <div className="bg-white rounded-lg shadow p-6">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold text-gray-900">
-            📦 {selectedShelter.name} - 備蓄管理
-          </h2>
-          <div className="space-x-2">
-            <button
-              onClick={() => setShowAddForm(true)}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium"
-            >
-              ➕ 補充登録
-            </button>
-            <button
-              onClick={() => setShowUseForm(true)}
-              className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-md text-sm font-medium"
-            >
-              ➖ 使用登録
-            </button>
+          <div>
+            <h2 className="text-xl font-bold text-gray-900">
+              📦 {selectedShelter.name} - 備蓄管理
+            </h2>
+            {isGuest && (
+              <p className="text-sm text-orange-600 mt-1">
+                閲覧専用モード - データの変更はできません
+              </p>
+            )}
           </div>
+          {!isGuest && (
+            <div className="space-x-2">
+              <button
+                onClick={() => setShowAddForm(true)}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium"
+              >
+                ➕ 補充登録
+              </button>
+              <button
+                onClick={() => setShowUseForm(true)}
+                className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-md text-sm font-medium"
+              >
+                ➖ 使用登録
+              </button>
+            </div>
+          )}
         </div>
+
+        {/* ゲスト向けの操作説明 */}
+        {isGuest && (
+          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+            <p className="text-sm text-blue-700">
+              💡 現在の備蓄状況を確認できます。備蓄の追加や使用は管理者のみ可能です。
+            </p>
+          </div>
+        )}
 
         {/* 在庫一覧 */}
         <div className="overflow-x-auto">
@@ -131,7 +149,7 @@ export default function StockManagement({ selectedShelter }) {
               {stockData.map((stock) => {
                 const status = getStockStatus(stock.quantity, stock.bihin_items.threshold)
                 return (
-                  <tr key={stock.id}>
+                  <tr key={stock.id} className={isGuest ? 'opacity-75' : ''}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                       {stock.bihin_items.name}
                     </td>
@@ -154,11 +172,18 @@ export default function StockManagement({ selectedShelter }) {
               })}
             </tbody>
           </table>
+
+          {stockData.length === 0 && (
+            <div className="text-center py-8 text-gray-500">
+              <p>備蓄データがありません</p>
+              {!isGuest && <p className="text-sm">補充登録から備蓄を追加してください</p>}
+            </div>
+          )}
         </div>
       </div>
 
-      {/* 補充フォーム */}
-      {showAddForm && (
+      {/* 補充フォーム（管理者のみ） */}
+      {!isGuest && showAddForm && (
         <AddStockForm
           selectedShelter={selectedShelter}
           bihinItems={bihinItems}
@@ -170,8 +195,8 @@ export default function StockManagement({ selectedShelter }) {
         />
       )}
 
-      {/* 使用フォーム */}
-      {showUseForm && (
+      {/* 使用フォーム（管理者のみ） */}
+      {!isGuest && showUseForm && (
         <UseStockForm
           selectedShelter={selectedShelter}
           stockData={stockData}

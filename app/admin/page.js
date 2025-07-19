@@ -13,6 +13,7 @@ export default function AdminPage() {
   const [currentView, setCurrentView] = useState('map')
   const [selectedShelter, setSelectedShelter] = useState(null)
   const [shelters, setShelters] = useState([])
+  const [userInfo, setUserInfo] = useState(null)
   const router = useRouter()
 
   useEffect(() => {
@@ -28,7 +29,19 @@ export default function AdminPage() {
       }
     }
 
+    // ユーザー情報を取得
+    const checkUserType = () => {
+      const guestSession = sessionStorage.getItem('guest_session')
+      if (guestSession) {
+        const guestData = JSON.parse(guestSession)
+        setUserInfo({ type: 'guest', data: guestData })
+      } else {
+        setUserInfo({ type: 'admin' })
+      }
+    }
+
     fetchShelters()
+    checkUserType()
   }, [])
 
   const handleLogout = async () => {
@@ -36,7 +49,7 @@ export default function AdminPage() {
     const guestSession = sessionStorage.getItem('guest_session')
 
     if (guestSession) {
-      // ゲストセッションを削除
+      // ゲストセッションを削除してゲストログイン画面へ
       sessionStorage.removeItem('guest_session')
       router.push('/guest-login')
     } else {
@@ -47,19 +60,59 @@ export default function AdminPage() {
   }
 
   const renderContent = () => {
+    const isGuest = userInfo?.type === 'guest'
+    
     switch (currentView) {
       case 'stock':
-        return <StockManagement selectedShelter={selectedShelter} />
+        return <StockManagement selectedShelter={selectedShelter} isGuest={isGuest} />
       case 'qr':
-        return <div className="bg-white rounded-lg shadow p-6">QRスキャン機能（開発中）</div>
+        return (
+          <div className="bg-white rounded-lg shadow p-6">
+            <h3 className="text-lg font-medium mb-4">QRスキャン機能</h3>
+            {isGuest ? (
+              <div className="text-gray-500">
+                <p>ゲストユーザーは閲覧のみ可能です</p>
+                <p>QRスキャン機能は管理者のみ利用できます</p>
+              </div>
+            ) : (
+              <p>QRスキャン機能（開発中）</p>
+            )}
+          </div>
+        )
       case 'events':
-        return <EventCodeManagement />
+        // ゲストには表示しない
+        return isGuest ? null : <EventCodeManagement />
       case 'guests':
-        return <GuestManagement />
+        // ゲストには表示しない
+        return isGuest ? null : <GuestManagement />
       case 'alerts':
-        return <div className="bg-white rounded-lg shadow p-6">通知管理（開発中）</div>
+        return (
+          <div className="bg-white rounded-lg shadow p-6">
+            <h3 className="text-lg font-medium mb-4">通知管理</h3>
+            {isGuest ? (
+              <div className="text-gray-500">
+                <p>ゲストユーザーは閲覧のみ可能です</p>
+                <p>通知管理は管理者のみ利用できます</p>
+              </div>
+            ) : (
+              <p>通知管理（開発中）</p>
+            )}
+          </div>
+        )
       case 'stats':
-        return <div className="bg-white rounded-lg shadow p-6">統計表示（開発中）</div>
+        return (
+          <div className="bg-white rounded-lg shadow p-6">
+            <h3 className="text-lg font-medium mb-4">統計表示</h3>
+            {isGuest ? (
+              <div className="text-gray-500">
+                <p>ゲストユーザーは閲覧のみ可能です</p>
+                <p>統計表示機能は管理者のみ利用できます</p>
+              </div>
+            ) : (
+              <p>統計表示（開発中）</p>
+            )}
+          </div>
+        )
       default:
         return (
           <div className="bg-white rounded-lg shadow p-6">
@@ -71,6 +124,8 @@ export default function AdminPage() {
     }
   }
 
+  const isGuest = userInfo?.type === 'guest'
+
   return (
     <AuthGuard>
       <div className="min-h-screen bg-gray-100">
@@ -78,13 +133,25 @@ export default function AdminPage() {
         <header className="bg-white shadow-sm border-b">
           <div className="max-w-7xl">
             <div className="flex justify-between items-center py-1">
-              <h1 className="text-2xl font-bold text-gray-900">
-                CityRiskView 管理画面
-              </h1>
-              <div className="flex items-center">
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">
+                  CityRiskView 管理画面
+                </h1>
+                {isGuest && (
+                  <p className="text-sm text-orange-600 font-medium">
+                    ゲストモード - 閲覧専用
+                  </p>
+                )}
+              </div>
+              <div className="flex items-center space-x-4">
                 {selectedShelter && (
                   <span className="text-sm text-gray-600">
                     選択中: {selectedShelter.name}
+                  </span>
+                )}
+                {isGuest && (
+                  <span className="text-sm bg-orange-100 text-orange-800 px-2 py-1 rounded">
+                    ゲスト: {userInfo.data.name}
                   </span>
                 )}
                 <button
@@ -107,7 +174,7 @@ export default function AdminPage() {
               <div className="lg:col-span-1">
                 <div className="bg-white rounded-lg shadow p-6">
                   <h2 className="text-lg font-medium text-gray-900 mb-4">
-                    管理機能
+                    {isGuest ? '閲覧機能' : '管理機能'}
                   </h2>
 
                   <div className="space-y-3">
@@ -128,59 +195,85 @@ export default function AdminPage() {
                           : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                         }`}
                     >
-                      備蓄管理
+                      備蓄管理{isGuest && ' (閲覧)'}
                     </button>
 
-                    <button
-                      onClick={() => setCurrentView('qr')}
-                      className={`w-full px-4 py-2 rounded-md text-sm font-medium ${currentView === 'qr'
-                          ? 'bg-green-600 text-white'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                        }`}
-                    >
-                      QRスキャン
-                    </button>
+                    {!isGuest && (
+                      <button
+                        onClick={() => setCurrentView('qr')}
+                        className={`w-full px-4 py-2 rounded-md text-sm font-medium ${currentView === 'qr'
+                            ? 'bg-green-600 text-white'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          }`}
+                      >
+                        QRスキャン
+                      </button>
+                    )}
 
-                    <button
-                      onClick={() => setCurrentView('alerts')}
-                      className={`w-full px-4 py-2 rounded-md text-sm font-medium ${currentView === 'alerts'
-                          ? 'bg-yellow-600 text-white'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                        }`}
-                    >
-                      通知管理
-                    </button>
+                    {!isGuest && (
+                      <button
+                        onClick={() => setCurrentView('alerts')}
+                        className={`w-full px-4 py-2 rounded-md text-sm font-medium ${currentView === 'alerts'
+                            ? 'bg-yellow-600 text-white'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          }`}
+                      >
+                        通知管理
+                      </button>
+                    )}
 
-                    <button
-                      onClick={() => setCurrentView('stats')}
-                      className={`w-full px-4 py-2 rounded-md text-sm font-medium ${currentView === 'stats'
-                          ? 'bg-purple-600 text-white'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                        }`}
-                    >
-                      統計表示
-                    </button>
+                    {!isGuest && (
+                      <button
+                        onClick={() => setCurrentView('stats')}
+                        className={`w-full px-4 py-2 rounded-md text-sm font-medium ${currentView === 'stats'
+                            ? 'bg-purple-600 text-white'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          }`}
+                      >
+                        統計表示
+                      </button>
+                    )}
 
-                    <button
-                      onClick={() => setCurrentView('events')}
-                      className={`w-full px-4 py-2 rounded-md text-sm font-medium ${currentView === 'events'
-                          ? 'bg-orange-600 text-white'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                        }`}
-                    >
-                      イベント管理
-                    </button>
+                    {/* イベント管理とゲスト管理は管理者のみ */}
+                    {!isGuest && (
+                      <>
+                        <button
+                          onClick={() => setCurrentView('events')}
+                          className={`w-full px-4 py-2 rounded-md text-sm font-medium ${currentView === 'events'
+                              ? 'bg-orange-600 text-white'
+                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            }`}
+                        >
+                          イベント管理
+                        </button>
 
-                    <button
-                      onClick={() => setCurrentView('guests')}
-                      className={`w-full px-4 py-2 rounded-md text-sm font-medium ${currentView === 'guests'
-                          ? 'bg-teal-600 text-white'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                        }`}
-                    >
-                      ゲスト管理
-                    </button>
+                        <button
+                          onClick={() => setCurrentView('guests')}
+                          className={`w-full px-4 py-2 rounded-md text-sm font-medium ${currentView === 'guests'
+                              ? 'bg-teal-600 text-white'
+                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            }`}
+                        >
+                          ゲスト管理
+                        </button>
+                      </>
+                    )}
                   </div>
+
+                  {/* ゲスト向けの説明 */}
+                  {isGuest && (
+                    <div className="mt-6 p-3 bg-orange-50 border border-orange-200 rounded-md">
+                      <h4 className="text-sm font-medium text-orange-800 mb-2">
+                        ゲストモードについて
+                      </h4>
+                      <ul className="text-xs text-orange-700 space-y-1">
+                        <li>• 全ての情報を閲覧できます</li>
+                        <li>• データの変更はできません</li>
+                        <li>• 備蓄の追加・使用はできません</li>
+                        <li>• イベント管理は利用できません</li>
+                      </ul>
+                    </div>
+                  )}
                 </div>
               </div>
 
