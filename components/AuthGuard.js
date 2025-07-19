@@ -1,50 +1,86 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
+import { supabase } from '@/lib/supabase'
 
 export default function AuthGuard({ children }) {
-  const [user, setUser] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(true)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [userInfo, setUserInfo] = useState(null)
   const router = useRouter()
 
   useEffect(() => {
-    // 初期認証状態確認
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      setUser(user)
-      setLoading(false)
-      
-      if (!user) {
-        router.push('/login')
-      }
-    })
+    checkAuth()
+  }, [])
 
-    // 認証状態変更監視
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setUser(session?.user ?? null)
-        
-        if (!session?.user) {
+  const checkAuth = async () => {
+    try {
+      // 通常の認証をチェック
+      const { data: { user } } = await supabase.auth.getUser()
+      
+      if (user) {
+        setIsAuthenticated(true)
+        setUserInfo({ type: 'admin', user })
+      } else {
+        // ゲストセッションをチェック
+        const guestSession = sessionStorage.getItem('guest_session')
+        if (guestSession) {
+          const guestData = JSON.parse(guestSession)
+          
+          // ゲストアカウントの有効性をDBで確認
+          const { data: guestAccount, error } = await supabase
+            .from('guest_accounts')
+            .select('*')
+            .eq('id', guestData.id)
+            .eq('is_active', true)
+            .single()
+
+          if (!error && guestAccount) {
+            setIsAuthenticated(true)
+            setUserInfo({ type: 'guest', guest: guestData })
+          } else {
+            // 無効なゲストセッション
+            sessionStorage.removeItem('guest_session')
+            router.push('/guest-login')
+          }
+        } else {
           router.push('/login')
         }
       }
-    )
+    } catch (error) {
+      console.error('Auth check error:', error)
+      router.push('/login')
+    }
 
-    return () => subscription.unsubscribe()
-  }, [router])
+    setIsLoading(false)
+  }
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-xl">読み込み中...</div>
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900"></div>
       </div>
     )
   }
 
-  if (!user) {
+  if (!isAuthenticated) {
     return null
   }
 
-  return children
+  return (
+    <div>
+      {/* ユーザー情報表示（オプション） */}
+      {userInfo && (
+        <div className="bg-blue-50 border-b border-blue-200 px-4 py-2 text-sm">
+          {userInfo.type === 'admin' ? (
+            <span>管理者: {userInfo.user.email}</span>
+          ) : (
+            <span>ゲスト: {userInfo.guest.name} (イベント: {userInfo.guest.eventCode})</span>
+          )}
+        </div>
+      )}
+      {children}
+    </div>
+  )
 }

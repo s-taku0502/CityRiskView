@@ -30,8 +30,18 @@ export default function AdminPage() {
   }, [])
 
   const handleLogout = async () => {
-    await supabase.auth.signOut()
-    router.push('/login')
+    // ゲストセッションをチェック
+    const guestSession = sessionStorage.getItem('guest_session')
+    
+    if (guestSession) {
+      // ゲストセッションを削除
+      sessionStorage.removeItem('guest_session')
+      router.push('/guest-login')
+    } else {
+      // 通常のログアウト
+      await supabase.auth.signOut()
+      router.push('/login')
+    }
   }
 
   const renderContent = () => {
