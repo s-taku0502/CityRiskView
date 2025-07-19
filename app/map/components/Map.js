@@ -195,7 +195,7 @@ export default function Map({ onShelterSelect }) {
               }
             }}
           />
-          <div className="absolute bottom-2 text-xs text-gray-500 bg-white bg-opacity-80 px-2 py-1 rounded">
+          <div className="absolute bottom-6 text-xs text-gray-500 bg-white bg-opacity-80 px-2 py-1 rounded">
             © <a href="https://www.mapbox.com/about/maps/" target="_blank" rel="noopener noreferrer" className="underline">Mapbox</a> |
             © <a href="https://www.openstreetmap.org/about/" target="_blank" rel="noopener noreferrer" className="underline">OpenStreetMap</a>
           </div>
