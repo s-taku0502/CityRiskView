@@ -164,8 +164,3 @@ export default function AdminPage() {
     </AuthGuard>
   )
 }
-
-navigator.geolocation.getCurrentPosition(
-  (position) => { /* 成功処理 */ },
-  (error) => console.error('現在地の取得に失敗:', error), // ← ログのみ
-)
