@@ -34,7 +34,7 @@ export default function AdminPage() {
   const handleLogout = async () => {
     // ゲストセッションをチェック
     const guestSession = sessionStorage.getItem('guest_session')
-    
+
     if (guestSession) {
       // ゲストセッションを削除
       sessionStorage.removeItem('guest_session')
@@ -102,90 +102,83 @@ export default function AdminPage() {
         <main className="max-w-7xl py-1">
           <div className="py-1">
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-              
+
               {/* 左側: 管理パネル */}
               <div className="lg:col-span-1">
                 <div className="bg-white rounded-lg shadow p-6">
                   <h2 className="text-lg font-medium text-gray-900 mb-4">
                     管理機能
                   </h2>
-                  
+
                   <div className="space-y-3">
                     <button
                       onClick={() => setCurrentView('map')}
-                      className={`w-full px-4 py-2 rounded-md text-sm font-medium ${
-                        currentView === 'map'
+                      className={`w-full px-4 py-2 rounded-md text-sm font-medium ${currentView === 'map'
                           ? 'bg-indigo-600 text-white'
                           : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
+                        }`}
                     >
                       マップ表示
                     </button>
-                    
+
                     <button
                       onClick={() => setCurrentView('stock')}
-                      className={`w-full px-4 py-2 rounded-md text-sm font-medium ${
-                        currentView === 'stock'
+                      className={`w-full px-4 py-2 rounded-md text-sm font-medium ${currentView === 'stock'
                           ? 'bg-blue-600 text-white'
                           : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
+                        }`}
                     >
                       備蓄管理
                     </button>
-                    
+
                     <button
                       onClick={() => setCurrentView('qr')}
-                      className={`w-full px-4 py-2 rounded-md text-sm font-medium ${
-                        currentView === 'qr'
+                      className={`w-full px-4 py-2 rounded-md text-sm font-medium ${currentView === 'qr'
                           ? 'bg-green-600 text-white'
                           : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
+                        }`}
                     >
                       QRスキャン
                     </button>
-                    
-                    <button
-                      onClick={() => setCurrentView('events')}
-                      className={`w-full px-4 py-2 rounded-md text-sm font-medium ${
-                        currentView === 'events'
-                          ? 'bg-orange-600 text-white'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
-                    >
-                      イベント管理
-                    </button>
-                    
-                    <button
-                      onClick={() => setCurrentView('guests')}
-                      className={`w-full px-4 py-2 rounded-md text-sm font-medium ${
-                        currentView === 'guests'
-                          ? 'bg-teal-600 text-white'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
-                    >
-                      ゲスト管理
-                    </button>
-                    
+
                     <button
                       onClick={() => setCurrentView('alerts')}
-                      className={`w-full px-4 py-2 rounded-md text-sm font-medium ${
-                        currentView === 'alerts'
+                      className={`w-full px-4 py-2 rounded-md text-sm font-medium ${currentView === 'alerts'
                           ? 'bg-yellow-600 text-white'
                           : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
+                        }`}
                     >
                       通知管理
                     </button>
-                    
+
                     <button
                       onClick={() => setCurrentView('stats')}
-                      className={`w-full px-4 py-2 rounded-md text-sm font-medium ${
-                        currentView === 'stats'
+                      className={`w-full px-4 py-2 rounded-md text-sm font-medium ${currentView === 'stats'
                           ? 'bg-purple-600 text-white'
                           : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
+                        }`}
                     >
                       統計表示
+                    </button>
+
+                    <button
+                      onClick={() => setCurrentView('events')}
+                      className={`w-full px-4 py-2 rounded-md text-sm font-medium ${currentView === 'events'
+                          ? 'bg-orange-600 text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        }`}
+                    >
+                      イベント管理
+                    </button>
+
+                    <button
+                      onClick={() => setCurrentView('guests')}
+                      className={`w-full px-4 py-2 rounded-md text-sm font-medium ${currentView === 'guests'
+                          ? 'bg-teal-600 text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        }`}
+                    >
+                      ゲスト管理
                     </button>
                   </div>
                 </div>
