@@ -70,7 +70,6 @@ export default function AuthGuard({ children }) {
 
   return (
     <div>
-      {/* ユーザー情報表示（オプション） */}
       {userInfo && (
         <div className="bg-blue-50 border-b border-blue-200 px-4 py-2 text-sm">
           {userInfo.type === 'admin' ? (

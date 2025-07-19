@@ -11,7 +11,85 @@ export default function GuestLoginPage() {
   const [error, setError] = useState('')
   const router = useRouter()
 
-  // イベントコードの有効性チェックを更新
+  const handleGuestLogin = async (e) => {
+    e.preventDefault()
+    setLoading(true)
+    setError('')
+
+    try {
+      // イベントコードの有効性チェック
+      const isValid = await isValidEventCode(eventCode)
+      if (!isValid) {
+        setError('無効なイベントコードです。コードが正しいか、イベント期間内かご確認ください。')
+        setLoading(false)
+        return
+      }
+
+      // 既存のゲストアカウントをチェック
+      const { data: existingGuest, error: checkError } = await supabase
+        .from('guest_accounts')
+        .select('*')
+        .eq('name', name)
+        .eq('event_code', eventCode.toUpperCase())
+        .eq('is_active', true)
+        .maybeSingle()
+
+      if (checkError) throw checkError
+
+      let guestId
+      
+      if (existingGuest) {
+        // 既存アカウントの最終ログイン時間を更新
+        const { data: updatedGuest, error: updateError } = await supabase
+          .from('guest_accounts')
+          .update({ 
+            last_login_time: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', existingGuest.id)
+          .select()
+          .single()
+
+        if (updateError) throw updateError
+        guestId = existingGuest.id
+      } else {
+        // 新規ゲストアカウント作成
+        const { data: newGuest, error: insertError } = await supabase
+          .from('guest_accounts')
+          .insert({
+            name,
+            event_code: eventCode.toUpperCase(),
+            login_time: new Date().toISOString(),
+            last_login_time: new Date().toISOString()
+          })
+          .select()
+          .single()
+
+        if (insertError) throw insertError
+        guestId = newGuest.id
+      }
+
+      // セッションストレージにゲスト情報を保存
+      sessionStorage.setItem('guest_session', JSON.stringify({
+        id: guestId,
+        name,
+        eventCode: eventCode.toUpperCase(),
+        loginTime: new Date().toISOString(),
+        isGuest: true
+      }))
+
+      // 管理画面へリダイレクト
+      router.push('/admin')
+      
+    } catch (error) {
+      console.error('Guest login error:', error)
+      setError('ログインに失敗しました: ' + error.message)
+    }
+
+    setLoading(false)
+  }
+
+  // イベントコードの有効性チェック
   const isValidEventCode = async (code) => {
     try {
       const { data, error } = await supabase
@@ -44,84 +122,6 @@ export default function GuestLoginPage() {
       console.error('Event code validation error:', error)
       return false
     }
-  }
-
-  const handleGuestLogin = async (e) => {
-    e.preventDefault()
-    setLoading(true)
-    setError('')
-
-    try {
-      // イベントコードの有効性チェック
-      const isValid = await isValidEventCode(eventCode)
-      if (!isValid) {
-        setError('無効なイベントコードです。コードが正しいか、イベント期間内かご確認ください。')
-        setLoading(false)
-        return
-      }
-
-      // 既存のゲストアカウントをチェック
-      const { data: existingGuest, error: checkError } = await supabase
-        .from('guest_accounts')
-        .select('*')
-        .eq('name', name)
-        .eq('event_code', eventCode)
-        .eq('is_active', true)
-        .maybeSingle()
-
-      if (checkError) throw checkError
-
-      let guestId
-      
-      if (existingGuest) {
-        // 既存アカウントの最終ログイン時間を更新
-        const { data: updatedGuest, error: updateError } = await supabase
-          .from('guest_accounts')
-          .update({ 
-            last_login_time: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', existingGuest.id)
-          .select()
-          .single()
-
-        if (updateError) throw updateError
-        guestId = existingGuest.id
-      } else {
-        // 新規ゲストアカウント作成
-        const { data: newGuest, error: insertError } = await supabase
-          .from('guest_accounts')
-          .insert({
-            name,
-            event_code: eventCode,
-            login_time: new Date().toISOString(),
-            last_login_time: new Date().toISOString()
-          })
-          .select()
-          .single()
-
-        if (insertError) throw insertError
-        guestId = newGuest.id
-      }
-
-      // セッションストレージにゲスト情報を保存
-      sessionStorage.setItem('guest_session', JSON.stringify({
-        id: guestId,
-        name,
-        eventCode,
-        loginTime: new Date().toISOString(),
-        isGuest: true
-      }))
-
-      // 管理画面へリダイレクト
-      router.push('/admin')
-      
-    } catch (error) {
-      console.error('Guest login error:', error)
-      setError('ログインに失敗しました: ' + error.message)
-    }
-
-    setLoading(false)
   }
 
   return (
