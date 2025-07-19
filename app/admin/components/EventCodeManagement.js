@@ -50,15 +50,17 @@ export default function EventCodeManagement() {
         updated_at: new Date().toISOString()
       }
 
+      let error
+    
       if (editingId) {
-        const { error } = await supabase
+        ({ error } = await supabase
           .from('event_codes')
           .update(payload)
-          .eq('id', editingId)
+          .eq('id', editingId))
       } else {
-        const { error } = await supabase
+        ({ error } = await supabase
           .from('event_codes')
-          .insert(payload)
+          .insert(payload))
       }
 
       if (error) throw error
