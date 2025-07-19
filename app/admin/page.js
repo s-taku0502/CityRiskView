@@ -1,16 +1,33 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import AuthGuard from '@/components/AuthGuard'
-import Map from '@/app/map/components/Map'
+import Map from '@/app/map/page'
 import StockManagement from './components/StockManagement'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 
 export default function AdminPage() {
   const [currentView, setCurrentView] = useState('map')
-  const [selectedShelter, setSelectedShelter] = useState(null)
+  const [selectedShelter, setSelectedShelter] = useState(null) // ← 復活
+  const [shelters, setShelters] = useState([])
   const router = useRouter()
+
+  useEffect(() => {
+    const fetchShelters = async () => {
+      const { data: shelters, error } = await supabase
+        .from('shelters')
+        .select('*');
+
+      if (error) {
+        console.error('Error fetching shelters:', error)
+      } else {
+        setShelters(shelters)
+      }
+    }
+
+    fetchShelters()
+  }, [])
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
@@ -33,8 +50,8 @@ export default function AdminPage() {
             <h2 className="text-lg font-medium text-gray-900 mb-4">
               避難所マップ
             </h2>
-            <div className="h-96 w-full">
-              <Map onShelterSelect={setSelectedShelter} />
+            <div className="w-full">
+              <Map onShelterSelect={setSelectedShelter} shelters={shelters} /> {/* ← 修正 */}
             </div>
           </div>
         )
@@ -46,7 +63,7 @@ export default function AdminPage() {
       <div className="min-h-screen bg-gray-100">
         {/* ヘッダー */}
         <header className="bg-white shadow-sm border-b">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <div className="flex justify-between items-center py-4">
               <h1 className="text-2xl font-bold text-gray-900">
                 CityRiskView 管理画面
@@ -150,3 +167,8 @@ export default function AdminPage() {
     </AuthGuard>
   )
 }
+
+navigator.geolocation.getCurrentPosition(
+  (position) => { /* 成功処理 */ },
+  (error) => console.error('現在地の取得に失敗:', error), // ← ログのみ
+)
