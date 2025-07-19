@@ -40,6 +40,28 @@ export default function GuestManagement() {
     }
   }
 
+  // 新規追加: ゲストアカウント削除機能
+  const deleteGuest = async (guestId, guestName) => {
+    if (!confirm(`ゲストアカウント「${guestName}」を完全に削除しますか？\n\nこの操作は取り消せません。`)) {
+      return
+    }
+
+    try {
+      const { error } = await supabase
+        .from('guest_accounts')
+        .delete()
+        .eq('id', guestId)
+
+      if (error) throw error
+      
+      alert('ゲストアカウントを削除しました')
+      fetchGuests()
+    } catch (error) {
+      console.error('Error deleting guest:', error)
+      alert('削除に失敗しました: ' + error.message)
+    }
+  }
+
   if (loading) {
     return <div className="text-center py-8">読み込み中...</div>
   }
@@ -82,7 +104,7 @@ export default function GuestManagement() {
                     {guest.is_active ? '有効' : '無効'}
                   </span>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
                   <button
                     onClick={() => toggleGuestStatus(guest.id, guest.is_active)}
                     className={`px-3 py-1 rounded text-xs font-medium ${
@@ -92,6 +114,13 @@ export default function GuestManagement() {
                     }`}
                   >
                     {guest.is_active ? '無効化' : '有効化'}
+                  </button>
+                  {/* 新規追加: 削除ボタン */}
+                  <button
+                    onClick={() => deleteGuest(guest.id, guest.name)}
+                    className="px-3 py-1 rounded text-xs font-medium bg-red-500 text-white hover:bg-red-600"
+                  >
+                    削除
                   </button>
                 </td>
               </tr>
