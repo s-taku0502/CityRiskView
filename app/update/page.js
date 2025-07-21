@@ -1,4 +1,18 @@
+import { title } from "process";
+
 const updates = [
+    {
+        title: "2025年7月21日 (追加更新)",
+        content: "管理者画面のイベントコード管理機能を大幅に改善しました。\n• RLS（Row Level Security）権限システムの最適化\n• 管理者専用機能の権限制御を強化\n• コード品質向上とパフォーマンス改善\n• イベントコード無効化・編集機能の安定化"
+    },
+    {
+        title: "2025年7月21日",
+        content: "管理者画面のゲスト用ログイン機能を追加しました。\nこれにより、管理者画面の一部画面をゲストユーザーが利用できるようになりました。\n https://cityriskview.vercel.app/guest-login をご覧ください。"
+    },
+    {
+        title: "2025年7月18日",
+        content: "一部仕様変更をおこないました。"
+    },
     {
         title: "2025年6月7日",
         content: "一般利用者向けのURLを調整しました。\n今後は https://cityriskview.vercel.app/ よりアクセスできます。"
