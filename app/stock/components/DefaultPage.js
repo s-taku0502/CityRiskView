@@ -1,7 +1,7 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { mockShelters } from '@/app/evacuation/EvacuationMockData';
+import { supabase } from '@/lib/supabase';
 import baseStockData from '@/data/ShelterStocks.json';
 import FilterPanel from '@/components/FilterPanel';
 
@@ -10,8 +10,34 @@ export default function StockViewPage() {
   const [keyword, setKeyword] = useState('');
   const [prefecture, setPrefecture] = useState('');
   const [city, setCity] = useState('');
+  const [shelters, setShelters] = useState([]);
 
   const router = useRouter();
+
+  useEffect(() => {
+    fetchShelters();
+  }, []);
+
+  const fetchShelters = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('shelters')
+        .select('*');
+      
+      if (error) throw error;
+      
+      // name_kana フィールドを追加（検索用）
+      const sheltersWithKana = data.map(shelter => ({
+        ...shelter,
+        name_kana: [shelter.name, shelter.name.replace(/市立|県立|小学校|中学校|高等学校|公民館/g, '')]
+      }));
+      
+      setShelters(sheltersWithKana);
+    } catch (error) {
+      console.error('Error fetching shelters:', error);
+      setShelters([]);
+    }
+  };
 
   const handleAccess = () => {
     if (shelterId.trim()) {
@@ -19,14 +45,14 @@ export default function StockViewPage() {
     }
   };
 
-  const prefectureOptions = [...new Set(mockShelters.map((s) => s.prefecture))];
+  const prefectureOptions = [...new Set(shelters.map((s) => s.prefecture))];
   const cityOptions = [...new Set(
-    mockShelters
+    shelters
       .filter((s) => !prefecture || s.prefecture === prefecture)
       .map((s) => s.city)
   )];
 
-  const filteredShelters = mockShelters.filter((shelter) => {
+  const filteredShelters = shelters.filter((shelter) => {
     const matchesKeyword =
       !keyword ||
       shelter.name_kana.some((k) =>
@@ -57,7 +83,7 @@ export default function StockViewPage() {
         />
         <button
           onClick={handleAccess}
-          className="ml-2 px-4 py-2 bg-blue-600 rounded hover:bg-blue-700"
+          className="ml-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
         >
           移動する
         </button>
@@ -65,7 +91,7 @@ export default function StockViewPage() {
 
       {/* フィルター UI */}
       <div className="mb-8 border-t-2 border-gray-300" />
-      <div className="mt-6 ">
+      <div className="mt-6">
         <h4 className="font-semibold text-lg mb-2">避難所の絞り込み</h4>
         <FilterPanel
           keyword={keyword}
