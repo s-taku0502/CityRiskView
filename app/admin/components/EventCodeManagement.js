@@ -128,15 +128,41 @@ export default function EventCodeManagement() {
 
   const toggleActive = async (id, currentStatus) => {
     try {
-      const { error } = await supabase
+      // ゲストセッションの確認
+      const guestSession = sessionStorage.getItem('guest_session')
+      if (guestSession) {
+        alert('ゲストユーザーは変更できません')
+        return
+      }
+      
+      // 認証確認
+      const { data: { user }, error: authError } = await supabase.auth.getUser()
+      if (!user) {
+        alert('認証が必要です')
+        return
+      }
+      
+      // 更新処理
+      const { data, error } = await supabase
         .from('event_codes')
-        .update({ is_active: !currentStatus })
+        .update({ 
+          is_active: !currentStatus,
+          updated_at: new Date().toISOString()
+        })
         .eq('id', id)
+        .select()
 
-      if (error) throw error
-      fetchEventCodes()
+      if (error) {
+        console.error('Toggle active error:', error)
+        alert(`更新に失敗しました: ${error.message}`)
+        return
+      }
+
+      await fetchEventCodes()
+      
     } catch (error) {
-      console.error('Error updating status:', error)
+      console.error('Unexpected error in toggleActive:', error)
+      alert('予期しないエラーが発生しました')
     }
   }
 
@@ -153,6 +179,7 @@ export default function EventCodeManagement() {
       fetchEventCodes()
     } catch (error) {
       console.error('Error deleting event code:', error)
+      alert('削除に失敗しました: ' + error.message)
     }
   }
 
