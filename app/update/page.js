@@ -2,6 +2,10 @@ import { title } from "process";
 
 const updates = [
     {
+        title: "2025年7月21日",
+        content: "管理者画面のゲスト用ログイン機能を追加しました。\nこれにより、管理者画面の一部画面をゲストユーザーが利用できるようになりました。\n https://cityriskview.vercel.app/dashboard/guest-login をご覧ください。"
+    },
+    {
         title: "2025年7月18日",
         content: "一部仕様変更をおこないました。"
     },
