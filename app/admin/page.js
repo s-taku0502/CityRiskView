@@ -8,12 +8,14 @@ import EventCodeManagement from './components/EventCodeManagement'
 import GuestManagement from './components/GuestManagement'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
+// import { developerEmail } from '@/lib/supabase'
 
 export default function AdminPage() {
   const [currentView, setCurrentView] = useState('map')
   const [selectedShelter, setSelectedShelter] = useState(null)
   const [shelters, setShelters] = useState([])
   const [userInfo, setUserInfo] = useState(null)
+  const [isDeveloper, setIsDeveloper] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
@@ -29,13 +31,26 @@ export default function AdminPage() {
       }
     }
 
-    // ユーザー情報を取得
-    const checkUserType = () => {
+    const checkUserType = async () => {
       const guestSession = sessionStorage.getItem('guest_session')
       if (guestSession) {
         const guestData = JSON.parse(guestSession)
         setUserInfo({ type: 'guest', data: guestData })
       } else {
+        // 開発者権限チェック（直接指定）
+        const { data: { user } } = await supabase.auth.getUser()
+        const developerEmails = ['sudoproject.personal@gmail.com']  // 直接指定
+        
+        console.log('Current user:', user?.email)  // デバッグ用
+        console.log('Developer emails:', developerEmails)  // デバッグ用
+        
+        if (user && developerEmails.includes(user.email)) {
+          setIsDeveloper(true)
+          console.log('Developer access granted!')  // デバッグ用
+        } else {
+          console.log('Not a developer')  // デバッグ用
+        }
+        
         setUserInfo({ type: 'admin' })
       }
     }
@@ -131,8 +146,8 @@ export default function AdminPage() {
       <div className="min-h-screen bg-gray-100">
         {/* ヘッダー */}
         <header className="bg-white shadow-sm border-b">
-          <div className="max-w-7xl">
-            <div className="flex justify-between items-center py-1">
+          <div className="max-w-7xl mx-auto px-4">
+            <div className="flex justify-between items-center py-4">
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">
                   CityRiskView 管理画面
@@ -142,8 +157,30 @@ export default function AdminPage() {
                     ゲストモード - 閲覧専用
                   </p>
                 )}
+                {/* デバッグ情報を一時的に表示 */}
+                <p className="text-xs text-gray-500">
+                  開発者権限: {isDeveloper ? 'あり' : 'なし'}
+                </p>
               </div>
               <div className="flex items-center space-x-4">
+                {/* 開発者画面へのボタン */}
+                {isDeveloper && (
+                  <button
+                    onClick={() => router.push('/developer')}
+                    className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2"
+                  >
+                    開発者画面
+                  </button>
+                )}
+                
+                {/* 強制的に開発者ボタンを表示（テスト用） */}
+                <button
+                  onClick={() => router.push('/developer')}
+                  className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md text-sm font-medium"
+                >
+                  開発者画面（テスト）
+                </button>
+                
                 {selectedShelter && (
                   <span className="text-sm text-gray-600">
                     選択中: {selectedShelter.name}
@@ -164,7 +201,7 @@ export default function AdminPage() {
             </div>
           </div>
         </header>
-
+        
         {/* メインコンテンツ */}
         <main className="max-w-7xl py-1">
           <div className="py-1">
