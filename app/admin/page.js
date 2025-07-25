@@ -173,14 +173,6 @@ export default function AdminPage() {
                   </button>
                 )}
                 
-                {/* 強制的に開発者ボタンを表示（テスト用） */}
-                <button
-                  onClick={() => router.push('/developer')}
-                  className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md text-sm font-medium"
-                >
-                  開発者画面（テスト）
-                </button>
-                
                 {selectedShelter && (
                   <span className="text-sm text-gray-600">
                     選択中: {selectedShelter.name}
