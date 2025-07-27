@@ -30,18 +30,18 @@ export default function HomePage() {
             イベント参加者ログイン
           </Link>
           
-          <Link 
+          {/* <Link 
             href="/map"
             className="block w-full bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-lg text-lg font-medium transition-colors"
           >
             一般向けマップ
-          </Link>
+          </Link> */}
         </div>
 
         <div className="text-sm text-gray-500">
           <p>管理者: 備蓄管理・QRスキャン機能</p>
           <p>イベント参加者: デモ・体験機能</p>
-          <p>一般: マップ表示・避難所情報</p>
+          {/* <p>一般: マップ表示・避難所情報</p> */}
         </div>
       </div>
     </div>
