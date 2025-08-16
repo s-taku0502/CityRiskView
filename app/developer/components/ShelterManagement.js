@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { supabase } from "../../../lib/supabase";
+import { supabase, getWriteClient } from "../../../lib/supabase-admin";
 import Papa from 'papaparse';
 
 export default function ShelterManagement() {
@@ -269,6 +269,7 @@ export default function ShelterManagement() {
   // 避難所を追加または更新（既存のまま）
   const upsertShelter = async (shelterData, checkDuplicate = true) => {
     try {
+      const writeClient = getWriteClient();
       let existingShelter = null;
       
       if (checkDuplicate) {
@@ -288,7 +289,7 @@ export default function ShelterManagement() {
 
       if (existingShelter) {
         // 既存の避難所を更新
-        const { error } = await supabase
+        const { error } = await writeClient
           .from('shelters')
           .update(dbData)
           .eq('id', existingShelter.id);
@@ -305,7 +306,7 @@ export default function ShelterManagement() {
         return { action: 'updated', id: existingShelter.id };
       } else {
         // 新しい避難所を追加
-        const { data, error } = await supabase
+        const { data, error } = await writeClient
           .from('shelters')
           .insert([dbData])
           .select()
@@ -331,7 +332,8 @@ export default function ShelterManagement() {
   // システムログの記録（既存のまま）
   const logAction = async (level, message, metadata = {}) => {
     try {
-      await supabase
+      const writeClient = getWriteClient();
+      await writeClient
         .from('system_logs')
         .insert([{
           level,
@@ -587,8 +589,39 @@ export default function ShelterManagement() {
     return extendedInfo;
   };
 
+  // CSVインポート前のバリデーション
+  const validateCsvMapping = () => {
+    const unmappedRequired = [];
+    
+    dbColumns.required.forEach(column => {
+      const mapping = columnMapping[column.key];
+      if (!mapping || mapping === '') {
+        unmappedRequired.push(column.label);
+      }
+      // 「該当なし」(__none__)は設定済みとして扱う
+    });
+    
+    if (unmappedRequired.length > 0) {
+      let errorMessage = 'インポートを実行できません:\n\n';
+      
+      errorMessage += `未選択の必須項目:\n${unmappedRequired.map(label => `・${label}`).join('\n')}\n\n`;
+      errorMessage += '必須項目はCSVの適切なカラムにマッピングするか「該当なし」を選択してください。';
+      
+      return errorMessage;
+    }
+    
+    return null;
+  };
+
   // CSVデータの一括インポート（既存のまま、ログ追加）
   const handleCsvImport = async () => {
+    // 事前バリデーション
+    const validationError = validateCsvMapping();
+    if (validationError) {
+      setMessage(validationError);
+      return;
+    }
+
     setCsvImportLoading(true);
     setMessage("");
 
@@ -620,11 +653,31 @@ export default function ShelterManagement() {
         // 必須項目の処理
         for (const column of dbColumns.required) {
           const csvColumn = columnMapping[column.key];
+          
+          // 「該当なし」が選択されている場合の処理
+          if (csvColumn === '__none__') {
+            // デフォルト値を設定
+            if (column.key === 'name') {
+              rowData[column.key] = `未設定避難所_${index + 1}`;
+            } else if (column.key === 'address') {
+              rowData[column.key] = '住所未設定';
+            } else if (column.key === 'latitude') {
+              rowData[column.key] = 0.0;
+            } else if (column.key === 'longitude') {
+              rowData[column.key] = 0.0;
+            } else if (column.key === 'capacity') {
+              rowData[column.key] = 0;
+            } else {
+              rowData[column.key] = column.key === 'current_people' ? 0 : null;
+            }
+            continue;
+          }
+          
           let value = csvColumn ? row[csvColumn] : null;
 
           if (!value || value.toString().trim() === '') {
             hasRequiredFields = false;
-            errors.push(`行${index + 1}: ${column.label}が必須です`);
+            errors.push(`行${index + 1}: ${column.label}が必須です（値が空です）`);
             continue;
           } else {
             if (column.type === 'number') {
@@ -648,7 +701,7 @@ export default function ShelterManagement() {
         const allColumns = [...dbColumns.recommended, ...dbColumns.auxiliary];
         for (const column of allColumns) {
           const csvColumn = columnMapping[column.key];
-          let value = csvColumn ? row[csvColumn] : null;
+          let value = csvColumn && csvColumn !== '__none__' ? row[csvColumn] : null;
 
           if (value) {
             if (column.type === 'checkbox') {
@@ -815,9 +868,10 @@ export default function ShelterManagement() {
     if (!confirm("この避難所を削除しますか？")) return;
 
     try {
+      const writeClient = getWriteClient();
       const shelter = shelters.find(s => s.id === id);
       
-      const { error } = await supabase
+      const { error } = await writeClient
         .from('shelters')
         .delete()
         .eq('id', id);
@@ -939,24 +993,74 @@ export default function ShelterManagement() {
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
               {[...dbColumns.required, ...dbColumns.recommended, ...dbColumns.auxiliary]
-                .map(column => (
-                <div key={column.key} className="flex items-center gap-2">
-                  <label className="w-32 text-sm font-medium">
-                    {column.label}
-                    {dbColumns.required.includes(column) && <span className="text-red-500">*</span>}:
-                  </label>
-                  <select
-                    value={columnMapping[column.key] || ''}
-                    onChange={(e) => handleMappingChange(column.key, e.target.value)}
-                    className="flex-1 p-1 border border-gray-300 rounded text-sm"
-                  >
-                    <option value="">選択してください</option>
-                    {csvHeaders.map(header => (
-                      <option key={header} value={header}>{header}</option>
-                    ))}
-                  </select>
+                .map(column => {
+                  const isRequired = dbColumns.required.includes(column);
+                  const currentMapping = columnMapping[column.key] || '';
+                  const isEmpty = currentMapping === '';
+                  const hasError = isRequired && isEmpty; // 「該当なし」はエラーとしない
+                  
+                  return (
+                    <div key={column.key} className={`flex items-center gap-2 ${hasError ? 'bg-red-50 p-2 rounded' : ''}`}>
+                      <label className="w-32 text-sm font-medium">
+                        {column.label}
+                        {isRequired && <span className="text-red-500">*</span>}:
+                      </label>
+                      <select
+                        value={currentMapping}
+                        onChange={(e) => handleMappingChange(column.key, e.target.value)}
+                        className={`flex-1 p-1 border rounded text-sm ${
+                          hasError 
+                            ? 'border-red-500 bg-red-50' 
+                            : 'border-gray-300'
+                        }`}
+                      >
+                        <option value="">選択してください</option>
+                        <option value="__none__" className="text-gray-500">該当なし</option>
+                        {csvHeaders.map(header => (
+                          <option key={header} value={header}>{header}</option>
+                        ))}
+                      </select>
+                      {hasError && (
+                        <span className="text-red-500 text-xs">必須</span>
+                      )}
+                    </div>
+                  );
+                })}
+            </div>
+
+            {/* マッピング状況の概要表示 */}
+            <div className="mb-4 p-3 bg-gray-50 rounded">
+              <h5 className="text-sm font-medium mb-2">マッピング状況</h5>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                <div>
+                  <span className="font-medium text-green-600">
+                    ✓ 設定済み: {dbColumns.required.filter(col => 
+                      columnMapping[col.key] && columnMapping[col.key] !== ''
+                    ).length}件
+                  </span>
                 </div>
-              ))}
+                <div>
+                  <span className="font-medium text-red-600">
+                    ✗ 未設定: {dbColumns.required.filter(col => 
+                      !columnMapping[col.key] || columnMapping[col.key] === ''
+                    ).length}件
+                  </span>
+                </div>
+                <div>
+                  <span className="font-medium text-blue-600">
+                    − 内「該当なし」: {dbColumns.required.filter(col => 
+                      columnMapping[col.key] === '__none__'
+                    ).length}件
+                  </span>
+                </div>
+              </div>
+              {(dbColumns.required.filter(col => 
+                !columnMapping[col.key] || columnMapping[col.key] === ''
+              ).length > 0) && (
+                <div className="mt-2 text-xs text-red-600">
+                  ⚠️ 未設定の必須項目があります
+                </div>
+              )}
             </div>
 
             {/* データプレビュー */}
@@ -977,13 +1081,15 @@ export default function ShelterManagement() {
                   {csvData.slice(0, 5).map((row, index) => (
                     <tr key={index}>
                       {dbColumns.required.map(column => {
-                        const value = columnMapping[column.key] ? row[columnMapping[column.key]] : '';
+                        const csvColumn = columnMapping[column.key];
+                        const value = csvColumn && csvColumn !== '__none__' ? row[csvColumn] : '';
                         const isEmpty = !value || value === '';
+                        const isNotMapped = csvColumn === '__none__';
                         return (
                           <td key={column.key} className={`border border-gray-300 p-2 ${
                             isEmpty ? 'bg-red-50 text-red-700' : ''
-                          }`}>
-                            {value || '-'}
+                          } ${isNotMapped ? 'bg-gray-50 text-gray-500' : ''}`}>
+                            {isNotMapped ? '該当なし' : (value || '-')}
                           </td>
                         );
                       })}
