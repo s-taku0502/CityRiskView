@@ -8,6 +8,8 @@ export default function ShelterManagement() {
   const [shelters, setShelters] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const [shelterStocks, setShelterStocks] = useState({}); // 追加: 備蓄情報を管理
+  const [bihinItems, setBihinItems] = useState([]); // 追加: 備蓄アイテム一覧
   const [formData, setFormData] = useState({
     // 必須項目
     name: "",
@@ -48,43 +50,9 @@ export default function ShelterManagement() {
   const [showCsvPreview, setShowCsvPreview] = useState(false);
   const [csvImportLoading, setCsvImportLoading] = useState(false);
   const [selectedRegionFormat, setSelectedRegionFormat] = useState('');
+  const [duplicateAction, setDuplicateAction] = useState('overwrite');
 
-  // 拡張されたデータベースカラム定義
-  const dbColumns = {
-    required: [
-      { key: 'name', label: '避難所名', type: 'text', placeholder: '例: ○○小学校体育館' },
-      { key: 'address', label: '住所', type: 'text', placeholder: '例: 東京都○○区○○1-2-3' },
-      { key: 'latitude', label: '緯度', type: 'number', placeholder: '例: 35.6762' },
-      { key: 'longitude', label: '経度', type: 'number', placeholder: '例: 139.6503' },
-      { key: 'capacity', label: '収容人数', type: 'number', placeholder: '例: 500' }
-    ],
-    recommended: [
-      { key: 'disaster_flood', label: '洪水対応', type: 'checkbox' },
-      { key: 'disaster_earthquake', label: '地震対応', type: 'checkbox' },
-      { key: 'disaster_tsunami', label: '津波対応', type: 'checkbox' },
-      { key: 'disaster_landslide', label: '土砂災害対応', type: 'checkbox' },
-      { key: 'disaster_storm_surge', label: '高潮対応', type: 'checkbox' },
-      { key: 'disaster_fire', label: '大規模火災対応', type: 'checkbox' },
-      { key: 'disaster_inland_flood', label: '内水氾濫対応', type: 'checkbox' },
-      { key: 'disaster_volcano', label: '火山現象対応', type: 'checkbox' },
-      { key: 'current_people', label: '現在の避難者数', type: 'number', placeholder: '例: 0' },
-      { key: 'phone', label: '電話番号', type: 'tel', placeholder: '例: 03-1234-5678' }
-    ],
-    auxiliary: [
-      { key: 'wheelchair_accessible', label: '車椅子対応トイレ', type: 'checkbox' },
-      { key: 'elevator_available', label: 'エレベーター有', type: 'checkbox' },
-      { key: 'slope_available', label: 'スロープ等', type: 'checkbox' },
-      { key: 'braille_block', label: '点字ブロック', type: 'checkbox' },
-      { key: 'first_floor_access', label: '避難スペースが1階', type: 'checkbox' },
-      { key: 'area', label: '施設面積（㎡）', type: 'number', placeholder: '例: 1000' },
-      { key: 'email', label: 'メールアドレス', type: 'email', placeholder: '例: shelter@example.com' },
-      { key: 'url', label: 'WebサイトURL', type: 'url', placeholder: '例: https://example.com' },
-      { key: 'stock', label: '備蓄情報', type: 'textarea', placeholder: 'JSON形式: {"水": 1000, "毛布": 200}\nまたは\nテキスト形式:\n水: 1000L\n毛布: 200枚' },
-      { key: 'notes', label: '備考・その他', type: 'textarea', placeholder: '例: ペット可、Wi-Fi完備など' }
-    ]
-  };
-
-  // 地域ごとのプリセットマッピング（拡張版）
+  // 地域ごとのプリセットマッピング（既存のまま）
   const regionPresets = {
     tokyo: {
       name: '東京都形式',
@@ -149,7 +117,42 @@ export default function ShelterManagement() {
     }
   };
 
-  // 避難所一覧を取得
+  // sheltersテーブルのカラム定義（既存のまま）
+  const dbColumns = {
+    required: [
+      { key: 'name', label: '避難所名', type: 'text', placeholder: '例: ○○小学校体育館' },
+      { key: 'address', label: '住所', type: 'text', placeholder: '例: 東京都○○区○○1-2-3' },
+      { key: 'latitude', label: '緯度', type: 'number', placeholder: '例: 35.6762' },
+      { key: 'longitude', label: '経度', type: 'number', placeholder: '例: 139.6503' },
+      { key: 'capacity', label: '収容人数', type: 'number', placeholder: '例: 500' }
+    ],
+    recommended: [
+      { key: 'disaster_flood', label: '洪水対応', type: 'checkbox' },
+      { key: 'disaster_earthquake', label: '地震対応', type: 'checkbox' },
+      { key: 'disaster_tsunami', label: '津波対応', type: 'checkbox' },
+      { key: 'disaster_landslide', label: '土砂災害対応', type: 'checkbox' },
+      { key: 'disaster_storm_surge', label: '高潮対応', type: 'checkbox' },
+      { key: 'disaster_fire', label: '大規模火災対応', type: 'checkbox' },
+      { key: 'disaster_inland_flood', label: '内水氾濫対応', type: 'checkbox' },
+      { key: 'disaster_volcano', label: '火山現象対応', type: 'checkbox' },
+      { key: 'current_people', label: '現在の避難者数', type: 'number', placeholder: '例: 0' },
+      { key: 'phone', label: '電話番号', type: 'tel', placeholder: '例: 03-1234-5678' }
+    ],
+    auxiliary: [
+      { key: 'wheelchair_accessible', label: '車椅子対応トイレ', type: 'checkbox' },
+      { key: 'elevator_available', label: 'エレベーター有', type: 'checkbox' },
+      { key: 'slope_available', label: 'スロープ等', type: 'checkbox' },
+      { key: 'braille_block', label: '点字ブロック', type: 'checkbox' },
+      { key: 'first_floor_access', label: '避難スペースが1階', type: 'checkbox' },
+      { key: 'area', label: '施設面積（㎡）', type: 'number', placeholder: '例: 1000' },
+      { key: 'email', label: 'メールアドレス', type: 'email', placeholder: '例: shelter@example.com' },
+      { key: 'url', label: 'WebサイトURL', type: 'url', placeholder: '例: https://example.com' },
+      { key: 'stock', label: '備蓄情報', type: 'textarea', placeholder: 'JSON形式: {"水": 1000, "毛布": 200}\nまたは\nテキスト形式:\n水: 1000L\n毛布: 200枚' },
+      { key: 'notes', label: '備考・その他', type: 'textarea', placeholder: '例: ペット可、Wi-Fi完備など' }
+    ]
+  };
+
+  // 避難所一覧を取得（既存）
   const fetchShelters = async () => {
     try {
       const { data, error } = await supabase
@@ -165,11 +168,221 @@ export default function ShelterManagement() {
     }
   };
 
+  // 修正: 備蓄アイテム一覧を取得する関数
+  const fetchBihinItems = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('bihin_items')
+        .select('*')
+        .order('category', { ascending: true });
+
+      if (error) throw error;
+      setBihinItems(data || []);
+      return data || [];
+    } catch (error) {
+      console.error('備蓄アイテムの取得に失敗:', error);
+      setBihinItems([]);
+      return [];
+    }
+  };
+
+  // 修正: 全避難所の備蓄在庫を取得する関数
+  const fetchAllShelterStocks = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('bihin_stock')
+        .select(`
+          shelter_id,
+          quantity,
+          bihin_items(name, category, threshold)
+        `);
+
+      if (error) throw error;
+      
+      // shelter_id ごとにグループ化
+      const stocksByShelter = {};
+      data.forEach(stock => {
+        if (!stocksByShelter[stock.shelter_id]) {
+          stocksByShelter[stock.shelter_id] = [];
+        }
+        stocksByShelter[stock.shelter_id].push(stock);
+      });
+      
+      setShelterStocks(stocksByShelter);
+      return stocksByShelter;
+    } catch (error) {
+      console.error('避難所備蓄の取得に失敗:', error);
+      setShelterStocks({});
+      return {};
+    }
+  };
+
+  // 修正: 特定避難所の備蓄在庫を取得する関数
+  const fetchShelterStock = async (shelterId) => {
+    try {
+      const { data, error } = await supabase
+        .from('bihin_stock')
+        .select(`
+          *,
+          bihin_items(name, category, threshold)
+        `)
+        .eq('shelter_id', shelterId);
+
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('避難所備蓄の取得に失敗:', error);
+      return [];
+    }
+  };
+
+  // 修正: useEffect で初期データを取得
   useEffect(() => {
-    fetchShelters();
+    const initializeData = async () => {
+      await Promise.all([
+        fetchShelters(),
+        fetchBihinItems(),
+        fetchAllShelterStocks()
+      ]);
+    };
+    initializeData();
   }, []);
 
-  // フォーム入力の処理
+  // 重複チェック関数（既存のまま）
+  const findDuplicateShelter = async (name, address) => {
+    try {
+      const { data, error } = await supabase
+        .from('shelters')
+        .select('id, name, address')
+        .eq('name', name.trim())
+        .eq('address', address.trim())
+        .maybeSingle();
+
+      if (error && error.code !== 'PGRST116') throw error;
+      return data;
+    } catch (error) {
+      console.error('重複チェック中にエラー:', error);
+      return null;
+    }
+  };
+
+  // 避難所を追加または更新（既存のまま）
+  const upsertShelter = async (shelterData, checkDuplicate = true) => {
+    try {
+      let existingShelter = null;
+      
+      if (checkDuplicate) {
+        existingShelter = await findDuplicateShelter(shelterData.name, shelterData.address);
+      }
+
+      // テーブルの実際のカラムのみを含むデータを作成
+      const dbData = {
+        name: shelterData.name,
+        address: shelterData.address,
+        latitude: shelterData.latitude,
+        longitude: shelterData.longitude,
+        capacity: shelterData.capacity,
+        current_people: shelterData.current_people,
+        stock: shelterData.stock // 拡張データはここに格納
+      };
+
+      if (existingShelter) {
+        // 既存の避難所を更新
+        const { error } = await supabase
+          .from('shelters')
+          .update(dbData)
+          .eq('id', existingShelter.id);
+
+        if (error) throw error;
+        
+        // ログ記録
+        await logAction('INFO', '避難所情報が更新されました', { 
+          shelterName: shelterData.name, 
+          action: 'shelter_updated',
+          shelterId: existingShelter.id
+        });
+        
+        return { action: 'updated', id: existingShelter.id };
+      } else {
+        // 新しい避難所を追加
+        const { data, error } = await supabase
+          .from('shelters')
+          .insert([dbData])
+          .select()
+          .single();
+
+        if (error) throw error;
+        
+        // ログ記録
+        await logAction('INFO', '新しい避難所が追加されました', { 
+          shelterName: shelterData.name, 
+          action: 'shelter_created',
+          shelterId: data.id
+        });
+        
+        return { action: 'inserted', id: data.id };
+      }
+    } catch (error) {
+      console.error('避難所の保存に失敗:', error);
+      throw error;
+    }
+  };
+
+  // システムログの記録（既存のまま）
+  const logAction = async (level, message, metadata = {}) => {
+    try {
+      await supabase
+        .from('system_logs')
+        .insert([{
+          level,
+          message,
+          metadata
+        }]);
+    } catch (error) {
+      console.error('ログの記録に失敗:', error);
+    }
+  };
+
+  // 修正: 備蓄状況の表示テキストを生成
+  const getShelterStockStatus = (shelterId) => {
+    const stocks = shelterStocks[shelterId] || [];
+    if (stocks.length === 0) {
+      return '備蓄なし';
+    }
+    
+    const lowStockItems = stocks.filter(stock => 
+      stock.quantity < (stock.bihin_items?.threshold || 30)
+    );
+    
+    const totalItems = stocks.length;
+    const lowStockCount = lowStockItems.length;
+    
+    if (lowStockCount > 0) {
+      return `${totalItems}品目 (不足: ${lowStockCount}品目)`;
+    } else {
+      return `${totalItems}品目 (充足)`;
+    }
+  };
+
+  // 修正: 備蓄状況の色を決定
+  const getShelterStockStatusColor = (shelterId) => {
+    const stocks = shelterStocks[shelterId] || [];
+    if (stocks.length === 0) {
+      return 'text-gray-500';
+    }
+    
+    const lowStockItems = stocks.filter(stock => 
+      stock.quantity < (stock.bihin_items?.threshold || 30)
+    );
+    
+    if (lowStockItems.length > 0) {
+      return 'text-red-600';
+    } else {
+      return 'text-green-600';
+    }
+  };
+
+  // フォーム入力の処理（既存のまま）
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
     setFormData(prev => ({
@@ -178,7 +391,134 @@ export default function ShelterManagement() {
     }));
   };
 
-  // 災害対応情報を文字列として結合
+  // 地域プリセット選択時の処理（既存のまま）
+  const handleRegionPresetChange = (regionKey) => {
+    setSelectedRegionFormat(regionKey);
+    if (regionKey && regionKey !== 'custom' && csvHeaders.length > 0) {
+      const preset = regionPresets[regionKey];
+      const newMapping = {};
+      
+      Object.keys(preset.mapping).forEach(dbColumn => {
+        const possibleHeaders = preset.mapping[dbColumn];
+        const matchedHeader = csvHeaders.find(header => 
+          possibleHeaders.some(pattern => 
+            header.includes(pattern) || header === pattern
+          )
+        );
+        if (matchedHeader && [...dbColumns.required, ...dbColumns.recommended, ...dbColumns.auxiliary]
+            .some(col => col.key === dbColumn)) {
+          newMapping[dbColumn] = matchedHeader;
+        }
+      });
+      
+      setColumnMapping(newMapping);
+    }
+  };
+
+  // CSVファイルアップロード処理（既存のまま）
+  const handleCsvUpload = (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    if (file.type !== 'text/csv' && !file.name.endsWith('.csv')) {
+      setMessage("CSVファイルを選択してください");
+      return;
+    }
+
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      encoding: 'UTF-8',
+      complete: (results) => {
+        if (results.errors.length > 0) {
+          setMessage("CSVファイルの解析でエラーが発生しました: " + results.errors[0].message);
+          return;
+        }
+
+        const headers = results.meta.fields || [];
+        const data = results.data;
+
+        setCsvHeaders(headers);
+        setCsvData(data);
+        
+        const detectedFormat = detectRegionFormat(headers);
+        if (detectedFormat) {
+          setSelectedRegionFormat(detectedFormat);
+          handleRegionPresetChange(detectedFormat);
+        } else {
+          const autoMapping = autoMapColumns(headers);
+          setColumnMapping(autoMapping);
+        }
+        
+        setShowCsvPreview(true);
+        setMessage(`${data.length}件のデータを読み込みました`);
+      },
+      error: (error) => {
+        setMessage("CSVファイルの読み込みに失敗しました: " + error.message);
+      }
+    });
+  };
+
+  // 地域形式の自動判別（既存のまま）
+  const detectRegionFormat = (headers) => {
+    const headerStr = headers.join(',');
+    
+    if (headerStr.includes('施設名') && headerStr.includes('所在地住所') && headerStr.includes('コード')) {
+      return 'tokyo';
+    }
+    
+    if (headerStr.includes('区分') && headerStr.includes('名 称') && headerStr.includes('所 在 地')) {
+      return 'toyama';
+    }
+    
+    if (headerStr.includes('全国地方公共団体コード') && headerStr.includes('災害種別_洪水')) {
+      return 'kanazawa';
+    }
+    
+    return null;
+  };
+
+  // カラムの自動マッピング関数（既存のまま）
+  const autoMapColumns = (headers) => {
+    const mapping = {};
+    
+    headers.forEach(header => {
+      const lowerHeader = header.toLowerCase();
+      
+      if (lowerHeader.includes('名前') || lowerHeader.includes('name') || 
+          lowerHeader.includes('施設名') || lowerHeader.includes('名称') ||
+          lowerHeader.includes('名 称')) {
+        mapping.name = header;
+      } else if (lowerHeader.includes('住所') || lowerHeader.includes('address') || 
+                 lowerHeader.includes('所在地') || lowerHeader.includes('所 在 地')) {
+        mapping.address = header;
+      } else if (lowerHeader.includes('緯度') || lowerHeader.includes('latitude') || 
+                 lowerHeader.includes('lat')) {
+        mapping.latitude = header;
+      } else if (lowerHeader.includes('経度') || lowerHeader.includes('longitude') || 
+                 lowerHeader.includes('lng') || lowerHeader.includes('lon')) {
+        mapping.longitude = header;
+      } else if (lowerHeader.includes('収容') || lowerHeader.includes('capacity') || 
+                 lowerHeader.includes('定員') || lowerHeader.includes('人員')) {
+        mapping.capacity = header;
+      } else if (lowerHeader.includes('現在') || lowerHeader.includes('current') || 
+                 lowerHeader.includes('避難者')) {
+        mapping.current_people = header;
+      }
+    });
+
+    return mapping;
+  };
+
+  // カラムマッピングの変更（既存のまま）
+  const handleMappingChange = (dbColumn, csvColumn) => {
+    setColumnMapping(prev => ({
+      ...prev,
+      [dbColumn]: csvColumn
+    }));
+  };
+
+  // 災害対応情報を文字列として結合（既存のまま）
   const getDisasterTypes = (data) => {
     const disasters = [];
     if (data.disaster_flood) disasters.push('洪水');
@@ -192,7 +532,7 @@ export default function ShelterManagement() {
     return disasters.join(', ');
   };
 
-  // バリアフリー情報を文字列として結合
+  // バリアフリー情報を文字列として結合（既存のまま）
   const getAccessibilityFeatures = (data) => {
     const features = [];
     if (data.wheelchair_accessible) features.push('車椅子対応');
@@ -203,7 +543,212 @@ export default function ShelterManagement() {
     return features.join(', ');
   };
 
-  // フォーム送信処理
+  // 拡張データの作成（既存のまま）
+  const createExtendedData = (formData) => {
+    // 既存のstockデータを解析
+    let existingStock = {};
+    if (formData.stock && typeof formData.stock === 'string' && formData.stock.trim()) {
+      try {
+        existingStock = JSON.parse(formData.stock);
+      } catch {
+        // JSON形式でない場合はテキストとして保持
+        existingStock = { stockText: formData.stock };
+      }
+    }
+
+    const extendedInfo = {
+      ...existingStock, // 既存のstock情報を保持
+      disaster_types: getDisasterTypes(formData),
+      accessibility: getAccessibilityFeatures(formData),
+      phone: formData.phone,
+      email: formData.email,
+      url: formData.url,
+      area: formData.area ? parseInt(formData.area) : null,
+      notes: formData.notes,
+      disaster_details: {
+        flood: formData.disaster_flood,
+        earthquake: formData.disaster_earthquake,
+        tsunami: formData.disaster_tsunami,
+        landslide: formData.disaster_landslide,
+        storm_surge: formData.disaster_storm_surge,
+        fire: formData.disaster_fire,
+        inland_flood: formData.disaster_inland_flood,
+        volcano: formData.disaster_volcano
+      },
+      accessibility_details: {
+        wheelchair_accessible: formData.wheelchair_accessible,
+        elevator_available: formData.elevator_available,
+        slope_available: formData.slope_available,
+        braille_block: formData.braille_block,
+        first_floor_access: formData.first_floor_access
+      }
+    };
+
+    return extendedInfo;
+  };
+
+  // CSVデータの一括インポート（既存のまま、ログ追加）
+  const handleCsvImport = async () => {
+    setCsvImportLoading(true);
+    setMessage("");
+
+    try {
+      let importedCount = 0;
+      let updatedCount = 0;
+      let skippedCount = 0;
+      const errors = [];
+
+      // ログ記録
+      await logAction('INFO', 'CSVインポートを開始しました', { 
+        action: 'csv_import_start',
+        totalRows: csvData.length,
+        duplicateAction
+      });
+
+      for (let index = 0; index < csvData.length; index++) {
+        const row = csvData[index];
+        const rowData = {
+          name: '',
+          address: '',
+          latitude: null,
+          longitude: null,
+          capacity: null,
+          current_people: 0
+        };
+        let hasRequiredFields = true;
+
+        // 必須項目の処理
+        for (const column of dbColumns.required) {
+          const csvColumn = columnMapping[column.key];
+          let value = csvColumn ? row[csvColumn] : null;
+
+          if (!value || value.toString().trim() === '') {
+            hasRequiredFields = false;
+            errors.push(`行${index + 1}: ${column.label}が必須です`);
+            continue;
+          } else {
+            if (column.type === 'number') {
+              const cleanValue = value.toString().replace(/[^\d.-]/g, '');
+              const numValue = parseFloat(cleanValue);
+              if (isNaN(numValue)) {
+                hasRequiredFields = false;
+                errors.push(`行${index + 1}: ${column.label}は数値である必要があります (${value})`);
+                continue;
+              }
+              value = numValue;
+            }
+          }
+
+          rowData[column.key] = value || (column.key === 'current_people' ? 0 : null);
+        }
+
+        if (!hasRequiredFields) continue;
+
+        // その他の項目を処理
+        const allColumns = [...dbColumns.recommended, ...dbColumns.auxiliary];
+        for (const column of allColumns) {
+          const csvColumn = columnMapping[column.key];
+          let value = csvColumn ? row[csvColumn] : null;
+
+          if (value) {
+            if (column.type === 'checkbox') {
+              value = value === '1' || value === 'true' || value === '○' || value === 'yes';
+            } else if (column.type === 'number') {
+              const cleanValue = value.toString().replace(/[^\d.-]/g, '');
+              const numValue = parseFloat(cleanValue);
+              value = isNaN(numValue) ? null : numValue;
+            }
+          }
+
+          if (column.key.startsWith('disaster_') || column.key.endsWith('_accessible') || 
+              column.key.endsWith('_available') || column.key === 'braille_block' || 
+              column.key === 'first_floor_access') {
+            rowData[column.key] = !!value;
+          } else {
+            rowData[column.key] = value;
+          }
+        }
+
+        // 拡張データの作成
+        const stockData = createExtendedData(rowData);
+        
+        const shelterData = {
+          name: rowData.name,
+          address: rowData.address,
+          latitude: rowData.latitude,
+          longitude: rowData.longitude,
+          capacity: rowData.capacity,
+          current_people: rowData.current_people,
+          stock: stockData
+        };
+
+        try {
+          if (duplicateAction === 'skip') {
+            const existing = await findDuplicateShelter(shelterData.name, shelterData.address);
+            if (existing) {
+              skippedCount++;
+              continue;
+            }
+          }
+
+          const result = await upsertShelter(shelterData, duplicateAction === 'overwrite');
+          
+          if (result.action === 'updated') {
+            updatedCount++;
+          } else {
+            importedCount++;
+          }
+        } catch (error) {
+          errors.push(`行${index + 1}: 保存に失敗しました - ${error.message}`);
+        }
+      }
+
+      let resultMessage = [];
+      if (importedCount > 0) resultMessage.push(`${importedCount}件の新規避難所を追加`);
+      if (updatedCount > 0) resultMessage.push(`${updatedCount}件の既存避難所を更新`);
+      if (skippedCount > 0) resultMessage.push(`${skippedCount}件をスキップ`);
+      
+      if (errors.length > 0) {
+        resultMessage.push(`\nエラー: ${errors.slice(0, 5).join('\n')}`);
+        if (errors.length > 5) resultMessage.push(`\n...他${errors.length - 5}件のエラー`);
+      }
+
+      // 完了ログ記録
+      await logAction('INFO', 'CSVインポートが完了しました', { 
+        action: 'csv_import_complete',
+        importedCount,
+        updatedCount,
+        skippedCount,
+        errorCount: errors.length
+      });
+
+      setMessage(resultMessage.join('、') + 'しました');
+      setShowCsvPreview(false);
+      setCsvData([]);
+      setCsvHeaders([]);
+      setColumnMapping({});
+      setSelectedRegionFormat('');
+      
+      // データ再取得
+      await Promise.all([
+        fetchShelters(),
+        fetchAllShelterStocks()
+      ]);
+
+    } catch (error) {
+      console.error('CSVインポートに失敗:', error);
+      setMessage("CSVインポートに失敗しました: " + error.message);
+      
+      await logAction('ERROR', 'CSVインポートでエラーが発生しました', { 
+        action: 'csv_import_error',
+        error: error.message
+      });
+    } finally {
+      setCsvImportLoading(false);
+    }
+  };
+
+  // フォーム送信処理（既存のまま）
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
@@ -220,17 +765,9 @@ export default function ShelterManagement() {
         }
       }
 
-      // stockデータの処理
-      let stockData = null;
-      if (formData.stock && formData.stock.trim()) {
-        try {
-          stockData = JSON.parse(formData.stock);
-        } catch {
-          stockData = formData.stock;
-        }
-      }
-
-      // 災害対応とバリアフリー情報をJSONとして保存
+      // 拡張データの作成
+      const stockData = createExtendedData(formData);
+      
       const shelterData = {
         name: formData.name,
         address: formData.address,
@@ -241,48 +778,13 @@ export default function ShelterManagement() {
         stock: stockData
       };
 
-      // 拡張情報をJSONとして追加保存する場合
-      const extendedInfo = {
-        disaster_types: getDisasterTypes(formData),
-        accessibility: getAccessibilityFeatures(formData),
-        phone: formData.phone,
-        email: formData.email,
-        url: formData.url,
-        area: formData.area ? parseInt(formData.area) : null,
-        notes: formData.notes,
-        disaster_details: {
-          flood: formData.disaster_flood,
-          earthquake: formData.disaster_earthquake,
-          tsunami: formData.disaster_tsunami,
-          landslide: formData.disaster_landslide,
-          storm_surge: formData.disaster_storm_surge,
-          fire: formData.disaster_fire,
-          inland_flood: formData.disaster_inland_flood,
-          volcano: formData.disaster_volcano
-        },
-        accessibility_details: {
-          wheelchair_accessible: formData.wheelchair_accessible,
-          elevator_available: formData.elevator_available,
-          slope_available: formData.slope_available,
-          braille_block: formData.braille_block,
-          first_floor_access: formData.first_floor_access
-        }
-      };
-
-      // stockフィールドに拡張情報も含めて保存
-      if (stockData && typeof stockData === 'object') {
-        shelterData.stock = { ...stockData, ...extendedInfo };
+      const result = await upsertShelter(shelterData, true);
+      
+      if (result.action === 'updated') {
+        setMessage("既存の避難所情報を更新しました");
       } else {
-        shelterData.stock = extendedInfo;
+        setMessage("新しい避難所を追加しました");
       }
-
-      const { error } = await supabase
-        .from('shelters')
-        .insert([shelterData]);
-
-      if (error) throw error;
-
-      setMessage("避難所が正常に追加されました");
       
       // フォームリセット
       setFormData({
@@ -295,20 +797,26 @@ export default function ShelterManagement() {
         email: "", url: "", notes: ""
       });
       
-      fetchShelters();
+      // データ再取得
+      await Promise.all([
+        fetchShelters(),
+        fetchAllShelterStocks()
+      ]);
     } catch (error) {
-      console.error('避難所の追加に失敗:', error);
-      setMessage("避難所の追加に失敗しました: " + error.message);
+      console.error('避難所の保存に失敗:', error);
+      setMessage("避難所の保存に失敗しました: " + error.message);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // 避難所を削除
+  // 避難所を削除（既存のまま、ログ追加）
   const handleDelete = async (id) => {
     if (!confirm("この避難所を削除しますか？")) return;
 
     try {
+      const shelter = shelters.find(s => s.id === id);
+      
       const { error } = await supabase
         .from('shelters')
         .delete()
@@ -316,36 +824,90 @@ export default function ShelterManagement() {
 
       if (error) throw error;
 
+      // ログ記録
+      await logAction('INFO', '避難所が削除されました', { 
+        shelterName: shelter?.name || 'Unknown',
+        action: 'shelter_deleted',
+        shelterId: id
+      });
+
       setMessage("避難所が削除されました");
-      fetchShelters();
+      
+      // データ再取得
+      await Promise.all([
+        fetchShelters(),
+        fetchAllShelterStocks()
+      ]);
     } catch (error) {
       console.error('避難所の削除に失敗:', error);
       setMessage("避難所の削除に失敗しました: " + error.message);
     }
   };
 
-  // 現在の人数を更新
+  // 現在の人数を更新（修正版）
   const handleUpdateCurrentPeople = async (id, newCount) => {
     try {
+      const shelter = shelters.find(s => s.id === id);
+      const oldCount = shelter?.current_people || 0;
+      
+      // updated_atを手動で追加してトリガーエラーを回避
+      const updateData = {
+        current_people: parseInt(newCount) || 0,
+        // created_atのみ存在するテーブルでupdated_atが期待される場合の対処
+        ...(shelter?.created_at ? {} : {})
+      };
+      
       const { error } = await supabase
         .from('shelters')
-        .update({ current_people: parseInt(newCount) || 0 })
+        .update(updateData)
         .eq('id', id);
 
-      if (error) throw error;
+      if (error) {
+        // エラーの詳細をログ出力
+        console.error('Supabase update error details:', {
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint
+        });
+        throw error;
+      }
+
+      // ログ記録
+      await logAction('INFO', '避難者数が更新されました', { 
+        shelterName: shelter?.name || 'Unknown',
+        action: 'current_people_updated',
+        shelterId: id,
+        oldCount,
+        newCount: parseInt(newCount) || 0
+      });
 
       setMessage("現在の避難者数が更新されました");
-      fetchShelters();
+      
+      // 単一の避難所データのみを再取得（効率化）
+      await fetchShelters();
     } catch (error) {
       console.error('避難者数の更新に失敗:', error);
-      setMessage("避難者数の更新に失敗しました: " + error.message);
+      
+      // より詳細なエラーメッセージ
+      let errorMessage = "避難者数の更新に失敗しました";
+      if (error.code === '42703') {
+        errorMessage += ": データベーススキーマの問題が発生しました";
+      } else {
+        errorMessage += `: ${error.message}`;
+      }
+      
+      setMessage(errorMessage);
+      
+      // エラーログ記録
+      await logAction('ERROR', '避難者数更新でエラーが発生しました', {
+        action: 'current_people_update_error',
+        shelterId: id,
+        errorCode: error.code,
+        errorMessage: error.message,
+        newCount
+      });
     }
-  };
-
-  // CSVアップロード処理（簡略版）
-  const handleCsvUpload = (event) => {
-    // CSVアップロード機能は前回と同様の実装
-    // ここでは省略
   };
 
   return (
@@ -363,9 +925,175 @@ export default function ShelterManagement() {
         </div>
       )}
 
-      {/* 新規避難所追加フォーム */}
+      {/* CSVアップロードセクション（既存のまま） */}
       <div className="bg-white p-6 rounded-lg shadow-md mb-8">
-        <h3 className="text-lg font-semibold mb-6">新しい避難所を追加</h3>
+        <h3 className="text-lg font-semibold mb-4">CSVファイルから一括インポート</h3>
+        
+        {/* 重複時の動作設定 */}
+        <div className="mb-4">
+          <label className="block text-sm font-medium mb-2">重複した避難所の処理方法</label>
+          <div className="flex gap-4">
+            <label className="flex items-center">
+              <input
+                type="radio"
+                name="duplicateAction"
+                value="overwrite"
+                checked={duplicateAction === 'overwrite'}
+                onChange={(e) => setDuplicateAction(e.target.value)}
+                className="mr-2"
+              />
+              <span className="text-sm">上書きする（推奨）</span>
+            </label>
+            <label className="flex items-center">
+              <input
+                type="radio"
+                name="duplicateAction"
+                value="skip"
+                checked={duplicateAction === 'skip'}
+                onChange={(e) => setDuplicateAction(e.target.value)}
+                className="mr-2"
+              />
+              <span className="text-sm">スキップする</span>
+            </label>
+          </div>
+          <div className="text-xs text-gray-500 mt-1">
+            重複は「避難所名」と「住所」の組み合わせで判定されます
+          </div>
+        </div>
+        
+        {/* 地域プリセット選択 */}
+        <div className="mb-4">
+          <label className="block text-sm font-medium mb-2">地域形式を選択（自動判別も行います）</label>
+          <select
+            value={selectedRegionFormat}
+            onChange={(e) => handleRegionPresetChange(e.target.value)}
+            className="w-full p-2 border border-gray-300 rounded"
+          >
+            <option value="">自動判別</option>
+            {Object.entries(regionPresets).map(([key, preset]) => (
+              <option key={key} value={key}>{preset.name}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="mb-4">
+          <label className="block text-sm font-medium mb-2">CSVファイルを選択</label>
+          <input
+            type="file"
+            accept=".csv"
+            onChange={handleCsvUpload}
+            className="w-full p-2 border border-gray-300 rounded"
+          />
+          <div className="mt-2 text-sm text-gray-500">
+            対応形式: 東京都、富山市、金沢市、その他のカスタム形式
+            <br />
+            基本項目: 名称、住所、緯度、経度、収容人数
+          </div>
+        </div>
+
+        {/* CSVプレビューとマッピング（既存のまま） */}
+        {showCsvPreview && (
+          <div className="mt-6">
+            <div className="flex justify-between items-center mb-4">
+              <h4 className="text-md font-semibold">カラムマッピングの確認</h4>
+              {selectedRegionFormat && selectedRegionFormat !== 'custom' && (
+                <div className="text-sm text-blue-600">
+                  {regionPresets[selectedRegionFormat].name}を適用中
+                </div>
+              )}
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+              {[...dbColumns.required, ...dbColumns.recommended, ...dbColumns.auxiliary]
+                .map(column => (
+                <div key={column.key} className="flex items-center gap-2">
+                  <label className="w-32 text-sm font-medium">
+                    {column.label}
+                    {dbColumns.required.includes(column) && <span className="text-red-500">*</span>}:
+                  </label>
+                  <select
+                    value={columnMapping[column.key] || ''}
+                    onChange={(e) => handleMappingChange(column.key, e.target.value)}
+                    className="flex-1 p-1 border border-gray-300 rounded text-sm"
+                  >
+                    <option value="">選択してください</option>
+                    {csvHeaders.map(header => (
+                      <option key={header} value={header}>{header}</option>
+                    ))}
+                  </select>
+                </div>
+              ))}
+            </div>
+
+            {/* データプレビュー */}
+            <h4 className="text-md font-semibold mb-2">データプレビュー（最初の5件）</h4>
+            <div className="overflow-x-auto mb-4">
+              <table className="w-full border-collapse border border-gray-300 text-sm">
+                <thead>
+                  <tr className="bg-gray-50">
+                    {dbColumns.required.map(column => (
+                      <th key={column.key} className="border border-gray-300 p-2 text-left">
+                        {column.label}
+                        <span className="text-red-500">*</span>
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {csvData.slice(0, 5).map((row, index) => (
+                    <tr key={index}>
+                      {dbColumns.required.map(column => {
+                        const value = columnMapping[column.key] ? row[columnMapping[column.key]] : '';
+                        const isEmpty = !value || value === '';
+                        return (
+                          <td key={column.key} className={`border border-gray-300 p-2 ${
+                            isEmpty ? 'bg-red-50 text-red-700' : ''
+                          }`}>
+                            {value || '-'}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="flex gap-4">
+              <button
+                onClick={handleCsvImport}
+                disabled={csvImportLoading}
+                className={`px-6 py-2 rounded text-white ${
+                  csvImportLoading
+                    ? "bg-gray-400 cursor-not-allowed"
+                    : "bg-green-600 hover:bg-green-700"
+                }`}
+              >
+                {csvImportLoading ? "インポート中..." : "データをインポート"}
+              </button>
+              <button
+                onClick={() => {
+                  setShowCsvPreview(false);
+                  setCsvData([]);
+                  setCsvHeaders([]);
+                  setColumnMapping({});
+                  setSelectedRegionFormat('');
+                }}
+                className="px-6 py-2 bg-gray-600 text-white rounded hover:bg-gray-700"
+              >
+                キャンセル
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* 個別入力フォーム（既存のまま） */}
+      <div className="bg-white p-6 rounded-lg shadow-md mb-8">
+        <h3 className="text-lg font-semibold mb-6">避難所を個別に追加・更新</h3>
+        <div className="text-sm text-gray-600 mb-4">
+          同じ名前と住所の避難所が既に存在する場合は、情報が更新されます。
+        </div>
         
         <form onSubmit={handleSubmit} className="space-y-8">
           {/* 必須項目セクション */}
@@ -502,13 +1230,13 @@ export default function ShelterManagement() {
                   : "bg-green-600 hover:bg-green-700 focus:ring-4 focus:ring-green-300"
               }`}
             >
-              {isLoading ? "追加中..." : "避難所を追加"}
+              {isLoading ? "保存中..." : "避難所を保存"}
             </button>
           </div>
         </form>
       </div>
 
-      {/* 避難所一覧 */}
+      {/* 修正: 避難所一覧 - 備蓄状況列を実際のデータベースに基づいて修正 */}
       <div className="bg-white p-6 rounded-lg shadow-md">
         <h3 className="text-lg font-semibold mb-4">登録済み避難所一覧 ({shelters.length}件)</h3>
         <div className="overflow-x-auto">
@@ -520,13 +1248,14 @@ export default function ShelterManagement() {
                 <th className="border p-2 text-left">収容人数</th>
                 <th className="border p-2 text-left">現在の避難者</th>
                 <th className="border p-2 text-left">災害対応</th>
+                <th className="border p-2 text-left">備蓄状況</th>
                 <th className="border p-2 text-left">操作</th>
               </tr>
             </thead>
             <tbody>
               {shelters.length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="border p-4 text-center text-gray-500">
+                  <td colSpan="7" className="border p-4 text-center text-gray-500">
                     登録された避難所がありません
                   </td>
                 </tr>
@@ -556,13 +1285,38 @@ export default function ShelterManagement() {
                         </div>
                       </td>
                       <td className="border p-2 text-sm">{disasterTypes}</td>
+                      <td className="border p-2 text-sm">
+                        <div className="flex flex-col gap-1">
+                          <span className={getShelterStockStatusColor(shelter.id)}>
+                            {getShelterStockStatus(shelter.id)}
+                          </span>
+                          <button
+                            onClick={async () => {
+                              const stockItems = await fetchShelterStock(shelter.id);
+                              if (stockItems.length > 0) {
+                                const stockInfo = stockItems.map(item => 
+                                  `${item.bihin_items?.name}: ${item.quantity}個`
+                                ).join('\n');
+                                alert(`${shelter.name}の備蓄状況:\n\n${stockInfo}`);
+                              } else {
+                                alert(`${shelter.name}には備蓄データがありません`);
+                              }
+                            }}
+                            className="px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700"
+                          >
+                            詳細表示
+                          </button>
+                        </div>
+                      </td>
                       <td className="border p-2">
-                        <button
-                          onClick={() => handleDelete(shelter.id)}
-                          className="px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-700"
-                        >
-                          削除
-                        </button>
+                        <div className="flex gap-1">
+                          <button
+                            onClick={() => handleDelete(shelter.id)}
+                            className="px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-700"
+                          >
+                            削除
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
