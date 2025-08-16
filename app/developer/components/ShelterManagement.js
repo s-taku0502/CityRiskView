@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { supabase, getWriteClient } from "../../../lib/supabase-admin";
+import { supabase, getWriteClient } from "../../../lib/supabase";
 import Papa from 'papaparse';
 
 export default function ShelterManagement() {
