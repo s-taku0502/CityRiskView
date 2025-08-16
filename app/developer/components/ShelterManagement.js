@@ -844,72 +844,6 @@ export default function ShelterManagement() {
     }
   };
 
-  // 現在の人数を更新（修正版）
-  const handleUpdateCurrentPeople = async (id, newCount) => {
-    try {
-      const shelter = shelters.find(s => s.id === id);
-      const oldCount = shelter?.current_people || 0;
-      
-      // updated_atを手動で追加してトリガーエラーを回避
-      const updateData = {
-        current_people: parseInt(newCount) || 0,
-        // created_atのみ存在するテーブルでupdated_atが期待される場合の対処
-        ...(shelter?.created_at ? {} : {})
-      };
-      
-      const { error } = await supabase
-        .from('shelters')
-        .update(updateData)
-        .eq('id', id);
-
-      if (error) {
-        // エラーの詳細をログ出力
-        console.error('Supabase update error details:', {
-          code: error.code,
-          message: error.message,
-          details: error.details,
-          hint: error.hint
-        });
-        throw error;
-      }
-
-      // ログ記録
-      await logAction('INFO', '避難者数が更新されました', { 
-        shelterName: shelter?.name || 'Unknown',
-        action: 'current_people_updated',
-        shelterId: id,
-        oldCount,
-        newCount: parseInt(newCount) || 0
-      });
-
-      setMessage("現在の避難者数が更新されました");
-      
-      // 単一の避難所データのみを再取得（効率化）
-      await fetchShelters();
-    } catch (error) {
-      console.error('避難者数の更新に失敗:', error);
-      
-      // より詳細なエラーメッセージ
-      let errorMessage = "避難者数の更新に失敗しました";
-      if (error.code === '42703') {
-        errorMessage += ": データベーススキーマの問題が発生しました";
-      } else {
-        errorMessage += `: ${error.message}`;
-      }
-      
-      setMessage(errorMessage);
-      
-      // エラーログ記録
-      await logAction('ERROR', '避難者数更新でエラーが発生しました', {
-        action: 'current_people_update_error',
-        shelterId: id,
-        errorCode: error.code,
-        errorMessage: error.message,
-        newCount
-      });
-    }
-  };
-
   return (
     <div className="p-6">
       <h2 className="text-2xl font-bold mb-6">避難所管理</h2>
@@ -1236,7 +1170,7 @@ export default function ShelterManagement() {
         </form>
       </div>
 
-      {/* 修正: 避難所一覧 - 備蓄状況列を実際のデータベースに基づいて修正 */}
+      {/* 修正: 避難所一覧 - 現在の避難者数を表示のみに変更 */}
       <div className="bg-white p-6 rounded-lg shadow-md">
         <h3 className="text-lg font-semibold mb-4">登録済み避難所一覧 ({shelters.length}件)</h3>
         <div className="overflow-x-auto">
@@ -1269,20 +1203,10 @@ export default function ShelterManagement() {
                       <td className="border p-2 font-medium">{shelter.name}</td>
                       <td className="border p-2 text-sm">{shelter.address}</td>
                       <td className="border p-2 text-center">{shelter.capacity || "-"}</td>
-                      <td className="border p-2">
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="number"
-                            defaultValue={shelter.current_people || 0}
-                            className="w-16 p-1 border rounded text-sm"
-                            onBlur={(e) => {
-                              if (e.target.value !== (shelter.current_people || 0).toString()) {
-                                handleUpdateCurrentPeople(shelter.id, e.target.value);
-                              }
-                            }}
-                          />
-                          <span className="text-sm text-gray-500">人</span>
-                        </div>
+                      <td className="border p-2 text-center">
+                        <span className="font-medium text-blue-600">
+                          {shelter.current_people || 0}人
+                        </span>
                       </td>
                       <td className="border p-2 text-sm">{disasterTypes}</td>
                       <td className="border p-2 text-sm">
