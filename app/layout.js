@@ -1,5 +1,6 @@
 import "./globals.css";
 import Sidebar from "@/components/Sidebar";
+import Script from 'next/script';
 
 export const metadata = {
   title: "CityRiskView",
@@ -19,6 +20,20 @@ export default function RootLayout({ children }) {
         />
       </head>
       <body className="h-screen overflow-hidden">
+        {/* Google Analytics */}
+        <Script
+          src="https://www.googletagmanager.com/gtag/js?id=G-Y37BP6LQGG"
+          strategy="afterInteractive"
+        />
+        <Script id="google-analytics" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-Y37BP6LQGG');
+          `}
+        </Script>
+        
         <div className="flex h-full">
           <Sidebar />
           <main className="flex-1 overflow-y-auto">
