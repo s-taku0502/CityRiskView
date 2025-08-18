@@ -24,24 +24,22 @@ export default function HomePage() {
           </Link>
           
           <Link 
-            href="/guest-login"
-            className="block w-full bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg text-lg font-medium transition-colors"
-          >
-            イベント参加者ログイン
-          </Link>
-          
-          {/* <Link 
             href="/map"
             className="block w-full bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-lg text-lg font-medium transition-colors"
           >
             一般向けマップ
-          </Link> */}
+          </Link>
         </div>
 
-        <div className="text-sm text-gray-500">
-          <p>管理者: 備蓄管理・QRスキャン機能</p>
-          <p>イベント参加者: デモ・体験機能</p>
-          {/* <p>一般: マップ表示・避難所情報</p> */}
+        <div className="text-sm text-gray-500 space-y-2">
+          <p className="font-medium">機能概要:</p>
+          <p>管理者: 備蓄管理・QRスキャン・統計分析</p>
+          <p>一般: マップ表示・避難所情報・避難ルート</p>
+          <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+            <p className="text-blue-700 text-xs font-medium">
+              Google Analytics統合により、サイトの利用状況を分析しています
+            </p>
+          </div>
         </div>
       </div>
     </div>
