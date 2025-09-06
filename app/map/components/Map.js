@@ -156,6 +156,14 @@ export default function Map({ onShelterSelect }) {
         console.error('Mapbox error:', e);
       });
     }
+
+    // クリーンアップ関数を追加
+    return () => {
+      if (mapInstance.current) {
+        mapInstance.current.remove();
+        mapInstance.current = null;
+      }
+    };
   }, [loadSheltersFromSupabase, getCurrentLocation]);
 
   return (
