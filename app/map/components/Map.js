@@ -186,7 +186,7 @@ export default function Map({ onShelterSelect }) {
           </div>
           {/* ポップアップ表示 */}
           {selectedShelter && (
-            <PopupInfo feature={{ properties: selectedShelter }} />
+            <PopupInfo feature={{ properties: selectedShelter }} onClose={() => setSelectedShelter(null)} />
           )}
         </div>
       </div>
