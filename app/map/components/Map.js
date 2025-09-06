@@ -5,12 +5,9 @@ import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import LocationButton from '@/app/map/components/LocationButton';
 import { supabase } from '@/lib/supabase';
+import { MARKER_COLOR_SHELTER, MARKER_COLOR_CURRENT_LOCATION } from './constants'; // パスは適宜修正してください
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
-
-// マーカーの色を定数化
-const MARKER_COLOR_SHELTER = '#FF0000'; // 避難所のマーカー色
-const MARKER_COLOR_CURRENT_LOCATION = '#0000FF'; // 現在地のマーカー色
 
 export default function Map({ onShelterSelect }) {
   const mapContainer = useRef(null);
