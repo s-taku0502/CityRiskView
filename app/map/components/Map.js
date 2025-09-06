@@ -109,7 +109,7 @@ export default function Map({ onShelterSelect }) {
 
         // 新しいマーカーを作成
         currentLocationMarker.current = new mapboxgl.Marker({
-          color: 'bg-blue-500'
+          color: '#0000FF'
         })
           .setLngLat([longitude, latitude])
           .addTo(mapInstance.current);
