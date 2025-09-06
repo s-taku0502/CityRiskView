@@ -14,6 +14,10 @@ export default function Map({ onShelterSelect }) {
   const currentLocationMarker = useRef(null);
   const [evacuationData, setEvacuationData] = useState(null);
 
+  // マーカーの色を定数化
+  const MARKER_COLOR_SHELTER = '#FF0000'; // 避難所のマーカー色
+  const MARKER_COLOR_CURRENT_LOCATION = '#0000FF'; // 現在地のマーカー色
+
   // Supabaseから避難所データを読み込む
   const loadSheltersFromSupabase = useCallback(async () => {
     try {
@@ -47,7 +51,7 @@ export default function Map({ onShelterSelect }) {
 
         // mapInstanceが存在することを再確認
         if (mapInstance.current) {
-          const marker = new mapboxgl.Marker({ color: '#FF0000' })
+          const marker = new mapboxgl.Marker({ color: MARKER_COLOR_SHELTER })
             .setLngLat([longitude, latitude])
             .setPopup(
               new mapboxgl.Popup({ offset: 25 })
@@ -109,7 +113,7 @@ export default function Map({ onShelterSelect }) {
 
         // 新しいマーカーを作成
         currentLocationMarker.current = new mapboxgl.Marker({
-          color: '#0000FF'
+          color: MARKER_COLOR_CURRENT_LOCATION
         })
           .setLngLat([longitude, latitude])
           .addTo(mapInstance.current);
