@@ -5,6 +5,7 @@ import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import LocationButton from '@/app/map/components/LocationButton';
 import { supabase } from '@/lib/supabase';
+import { MARKER_COLOR_SHELTER, MARKER_COLOR_CURRENT_LOCATION } from '../constants';
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
 
@@ -47,7 +48,7 @@ export default function Map({ onShelterSelect }) {
 
         // mapInstanceが存在することを再確認
         if (mapInstance.current) {
-          const marker = new mapboxgl.Marker({ color: '#FF0000' })
+          const marker = new mapboxgl.Marker({ color: MARKER_COLOR_SHELTER })
             .setLngLat([longitude, latitude])
             .setPopup(
               new mapboxgl.Popup({ offset: 25 })
@@ -109,7 +110,7 @@ export default function Map({ onShelterSelect }) {
 
         // 新しいマーカーを作成
         currentLocationMarker.current = new mapboxgl.Marker({
-          color: '#00FF00'
+          color: MARKER_COLOR_CURRENT_LOCATION
         })
           .setLngLat([longitude, latitude])
           .addTo(mapInstance.current);
