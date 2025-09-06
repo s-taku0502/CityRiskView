@@ -5,7 +5,7 @@ import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import LocationButton from '@/app/map/components/LocationButton';
 import { supabase } from '@/lib/supabase';
-import { MARKER_COLOR_SHELTER, MARKER_COLOR_CURRENT_LOCATION } from '../constants'; // パスは適宜修正してください
+import { MARKER_COLOR_SHELTER, MARKER_COLOR_CURRENT_LOCATION } from '../constants';
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
 
