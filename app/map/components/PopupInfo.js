@@ -14,6 +14,9 @@ export default function PopupInfo({ feature }) {
   
     return (
       <div className="absolute top-4 right-4 p-4 rounded-xl shadow-lg w-80 z-10 bg-white text-gray-900 dark:bg-gray-800 dark:text-gray-100">
+        <button onClick={onClose} className="absolute top-2 right-2 text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-white" aria-label="閉じる">
+          <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+        </button>
         <h2 className="font-bold text-lg mb-2">{props.name}</h2>
         <p className="text-sm">住所: {props.address}</p>
         <p className="text-sm">収容人数: {props.capacity}</p>
