@@ -6,6 +6,7 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import LocationButton from '@/app/map/components/LocationButton';
 import { supabase } from '@/lib/supabase';
 import { MARKER_COLOR_SHELTER, MARKER_COLOR_CURRENT_LOCATION } from '../constants';
+import PopupInfo from './PopupInfo'; // 追加
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
 
@@ -14,6 +15,7 @@ export default function Map({ onShelterSelect }) {
   const mapInstance = useRef(null);
   const currentLocationMarker = useRef(null);
   const [evacuationData, setEvacuationData] = useState(null);
+  const [selectedShelter, setSelectedShelter] = useState(null); // 追加
 
   // Supabaseから避難所データを読み込む
   const loadSheltersFromSupabase = useCallback(async () => {
@@ -32,50 +34,20 @@ export default function Map({ onShelterSelect }) {
 
       // 各避難所にマーカーを追加
       shelters.forEach(shelter => {
-        const { latitude, longitude, name, address, capacity, current_people, stock } = shelter;
+        const { latitude, longitude } = shelter;
 
-        let stockItems = [];
-        try {
-          stockItems = typeof stock === 'string' ? JSON.parse(stock) : stock || [];
-          // stockItemsが配列でない場合は空配列に設定
-          if (!Array.isArray(stockItems)) {
-            stockItems = [];
-          }
-        } catch (err) {
-          console.warn('備蓄情報のパースに失敗:', err);
-          stockItems = [];
-        }
-
-        // mapInstanceが存在することを再確認
         if (mapInstance.current) {
           const marker = new mapboxgl.Marker({ color: MARKER_COLOR_SHELTER })
             .setLngLat([longitude, latitude])
-            .setPopup(
-              new mapboxgl.Popup({ offset: 25 })
-                .setHTML(`
-                  <h3 class="font-bold">${name}</h3>
-                  <p>${address}</p>
-                  <p>収容可能人数: ${capacity}人</p>
-                  <p>現在の避難者: ${current_people}人</p>
-                  <div class="mt-2">
-                    <strong>備蓄情報:</strong>
-                    <ul class="list-disc list-inside text-sm">
-                      ${Array.isArray(stockItems) && stockItems.length > 0 
-                        ? stockItems.map(item => `<li>${item.item}: ${item.quantity}</li>`).join('')
-                        : '<li>備蓄情報なし</li>'
-                      }
-                    </ul>
-                  </div>
-                `)
-            )
             .addTo(mapInstance.current);
 
-          // 管理者画面でのマーカークリック処理
-          if (onShelterSelect) {
-            marker.getElement().addEventListener('click', () => {
+          // マーカークリック時に選択状態を更新
+          marker.getElement().addEventListener('click', () => {
+            setSelectedShelter(shelter);
+            if (onShelterSelect) {
               onShelterSelect(shelter);
-            });
-          }
+            }
+          });
         }
       });
 
@@ -204,16 +176,20 @@ export default function Map({ onShelterSelect }) {
             © <a href="https://www.mapbox.com/about/maps/" target="_blank" rel="noopener noreferrer" className="underline">Mapbox</a> |
             © <a href="https://www.openstreetmap.org/about/" target="_blank" rel="noopener noreferrer" className="underline">OpenStreetMap</a>
           </div>
+          {/* ポップアップ表示 */}
+          {selectedShelter && (
+            <PopupInfo feature={{ properties: selectedShelter }} />
+          )}
         </div>
       </div>
-        ページが正しく表示されない場合は、
-        <button
-          onClick={() => window.location.reload()}
-          className="mt-2 text-blue-600 font-bold rounded"
-        >
-          こちら
-        </button>
-        をクリックして再読み込みしてください。
+      ページが正しく表示されない場合は、
+      <button
+        onClick={() => window.location.reload()}
+        className="mt-2 text-blue-600 font-bold rounded"
+      >
+        こちら
+      </button>
+      をクリックして再読み込みしてください。
     </div>
   );
 }
