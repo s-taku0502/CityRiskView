@@ -15,7 +15,13 @@ export default function Map({ onShelterSelect }) {
   const mapInstance = useRef(null);
   const currentLocationMarker = useRef(null);
   const [evacuationData, setEvacuationData] = useState(null);
-  const [selectedShelter, setSelectedShelter] = useState(null); // 追加
+  const [selectedShelter, setSelectedShelter] = useState(null);
+
+  // onShelterSelectの最新値を保持するref
+  const onShelterSelectRef = useRef(onShelterSelect);
+  useEffect(() => {
+    onShelterSelectRef.current = onShelterSelect;
+  }, [onShelterSelect]);
 
   // Supabaseから避難所データを読み込む
   const loadSheltersFromSupabase = useCallback(async () => {
@@ -26,13 +32,11 @@ export default function Map({ onShelterSelect }) {
 
       if (error) throw error;
 
-      // mapInstanceが存在することを確認，デバッグ用
       if (!mapInstance.current) {
         console.error('Map instance is not available for adding shelters');
         return;
       }
 
-      // 各避難所にマーカーを追加
       shelters.forEach(shelter => {
         const { latitude, longitude } = shelter;
 
@@ -41,11 +45,11 @@ export default function Map({ onShelterSelect }) {
             .setLngLat([longitude, latitude])
             .addTo(mapInstance.current);
 
-          // マーカークリック時に選択状態を更新
+          // 最新のonShelterSelectを参照
           marker.getElement().addEventListener('click', () => {
             setSelectedShelter(shelter);
-            if (onShelterSelect) {
-              onShelterSelect(shelter);
+            if (onShelterSelectRef.current) {
+              onShelterSelectRef.current(shelter);
             }
           });
         }
@@ -55,7 +59,7 @@ export default function Map({ onShelterSelect }) {
     } catch (error) {
       console.error('避難所データの読み込みに失敗:', error);
     }
-  }, [onShelterSelect]);
+  }, []); // onShelterSelectを依存配列から削除
 
   // 現在地取得のロジックを関数として切り出し
   const getCurrentLocation = useCallback(() => {
