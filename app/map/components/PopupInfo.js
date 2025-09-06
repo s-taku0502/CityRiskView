@@ -26,7 +26,7 @@ export default function PopupInfo({ feature }) {
           <strong>備蓄情報:</strong>
           <ul className="list-disc list-inside">
             {Array.isArray(stockItems) && stockItems.length > 0 ? (
-              stockItems.map((item, index) => (
+              stockItems.map((item) => (
                 <li key={item.item}>{item.item}: {item.quantity}</li>
               ))
             ) : (
