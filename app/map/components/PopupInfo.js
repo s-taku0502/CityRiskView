@@ -7,15 +7,13 @@ export default function PopupInfo({ feature, onClose }) {
 
     let stockItems = [];
     try {
-        // stockが文字列ならパース、配列ならそのまま、オブジェクトやその他は空配列
-        if (typeof props.stock === 'string') {
-            stockItems = JSON.parse(props.stock);
-        } else if (Array.isArray(props.stock)) {
-            stockItems = props.stock;
+        const stockData = typeof props.stock === 'string'
+            ? JSON.parse(props.stock)
+            : props.stock;
+
+        if (Array.isArray(stockData)) {
+            stockItems = stockData;
         } else {
-            stockItems = [];
-        }
-        if (!Array.isArray(stockItems)) {
             stockItems = [];
         }
     } catch (err) {
