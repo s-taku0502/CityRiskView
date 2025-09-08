@@ -27,8 +27,6 @@ export default function Sidebar() {
       // 募集開始日からイベント日の間かチェック
       if (currentDate >= recruitmentStart && currentDate <= eventDate) {
         MenuItems = [
-          { href: "/", text: "ダッシュボード" },
-          { href: "/map", text: "地図" },
           { href: "/stock", text: "備蓄情報" },
           { href: "/alert", text: "アラート情報" },
           { href: "/evacuation", text: "避難情報" },
@@ -37,8 +35,6 @@ export default function Sidebar() {
         ];
       } else {
         MenuItems = [
-          { href: "/", text: "ダッシュボード" },
-          // { href: "/map", text: "地図" },
           { href: "/stock", text: "備蓄情報" },
           { href: "/alert", text: "アラート情報" },
           { href: "/evacuation", text: "避難情報" },
