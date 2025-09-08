@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Map from '/app/map/components/Map.js'
+import LocationButton from '/app/map/components/LocationButton.js'
 
 export default function EvacuationMap({ currentLocation, nearestShelter, allShelters }) {
   const [selectedShelter, setSelectedShelter] = useState(null)
@@ -18,13 +19,49 @@ export default function EvacuationMap({ currentLocation, nearestShelter, allShel
     setSelectedShelter(shelter)
   }
 
-  useEffect(() => {
-    // Mapboxの地図を初期化する処理
-    // 現在は簡易表示版
-  }, [currentLocation, nearestShelter])
+  // 現在地取得ボタンのクリック時にMapへ現在地座標を渡す
+  const handleCurrentLocation = (location) => {
+    if (location) {
+      setSelectedShelter({
+        latitude: location.latitude,
+        longitude: location.longitude,
+        name: '現在地',
+      })
+    }
+  }
 
   return (
-    <div className="space-y-6">
+    <div className="relative w-full">
+      <Map 
+        center={
+          selectedShelter
+            ? { latitude: selectedShelter.latitude, longitude: selectedShelter.longitude }
+            : undefined
+        }
+        onShelterSelect={handleShelterSelect}
+        highlightedShelter={nearestShelter}
+        currentLocation={currentLocation}
+        showCurrentLocation={true}
+        evacuationMode={true}
+      />
+      <LocationButton
+        onClick={() => {
+          if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+              (position) => {
+                handleCurrentLocation({
+                  latitude: position.coords.latitude,
+                  longitude: position.coords.longitude,
+                })
+              },
+              (error) => {
+                console.error('現在地の取得に失敗:', error)
+              }
+            )
+          }
+        }}
+      />
+
       {/* 最寄り避難所情報 */}
       {nearestShelter && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4">
@@ -54,56 +91,26 @@ export default function EvacuationMap({ currentLocation, nearestShelter, allShel
         </div>
       )}
 
-      {/* 地図コンポーネント */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-medium text-gray-900">避難マップ</h3>
-          <div className="flex items-center space-x-2">
-            <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-            <span className="text-sm text-gray-600">現在地</span>
-            <div className="w-3 h-3 bg-red-500 rounded-full ml-4"></div>
-            <span className="text-sm text-gray-600">避難所</span>
-            {nearestShelter && (
-              <>
-                <div className="w-3 h-3 bg-yellow-500 rounded-full ml-4"></div>
-                <span className="text-sm text-gray-600">最寄り避難所</span>
-              </>
-            )}
-          </div>
+      {/* 現在地情報 */}
+      {currentLocation && (
+        <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+          <h5 className="font-medium text-blue-800 mb-1">現在地情報</h5>
+          <p className="text-sm text-blue-600">
+            緯度: {currentLocation.latitude.toFixed(6)}, 
+            経度: {currentLocation.longitude.toFixed(6)}
+          </p>
         </div>
+      )}
 
-        {/* 既存のMapコンポーネントを使用 */}
-        <div className="h-96 rounded-lg overflow-hidden">
-          <Map 
-            onShelterSelect={handleShelterSelect}
-            highlightedShelter={nearestShelter}
-            currentLocation={currentLocation}
-            showCurrentLocation={true}
-            evacuationMode={true}
-          />
-        </div>
-
-        {/* 現在地情報 */}
-        {currentLocation && (
-          <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
-            <h5 className="font-medium text-blue-800 mb-1">現在地情報</h5>
-            <p className="text-sm text-blue-600">
-              緯度: {currentLocation.latitude.toFixed(6)}, 
-              経度: {currentLocation.longitude.toFixed(6)}
-            </p>
-          </div>
-        )}
-
-        {/* 地図操作ヒント */}
-        <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
-          <h5 className="font-medium text-yellow-800 mb-1">避難時の注意事項</h5>
-          <ul className="text-sm text-yellow-700 space-y-1">
-            <li>• 安全な経路を選択して移動してください</li>
-            <li>• 落下物や倒壊の危険がある場所は避けてください</li>
-            <li>• 近隣の方と連携して避難してください</li>
-            <li>• 避難所での指示に従ってください</li>
-          </ul>
-        </div>
+      {/* 地図操作ヒント */}
+      <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+        <h5 className="font-medium text-yellow-800 mb-1">避難時の注意事項</h5>
+        <ul className="text-sm text-yellow-700 space-y-1">
+          <li>• 安全な経路を選択して移動してください</li>
+          <li>• 落下物や倒壊の危険がある場所は避けてください</li>
+          <li>• 近隣の方と連携して避難してください</li>
+          <li>• 避難所での指示に従ってください</li>
+        </ul>
       </div>
 
       {/* 選択された避難所の詳細情報 */}
