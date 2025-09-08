@@ -12,7 +12,7 @@ export default function Home() {
     }, 1200); // 1.2秒後に遷移
 
     return () => clearTimeout(timer);
-  }, [router]);
+  }, []);
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
