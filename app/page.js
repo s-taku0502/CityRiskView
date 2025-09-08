@@ -14,14 +14,14 @@ export default function Home() {
     }, REDIRECT_DELAY_MS);
 
     return () => clearTimeout(timer);
-  }, [router]);
+  }, []);
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
       <div className="text-xl font-semibold mb-6 text-gray-800">
         避難情報の画面へ遷移します
       </div>
-      <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-indigo-500"></div>
+      <div role="status" className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-indigo-500"></div>
     </div>
   );
 }
