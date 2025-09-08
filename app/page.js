@@ -5,11 +5,13 @@ import { useRouter } from "next/navigation";
 
 export default function Home() {
   const router = useRouter();
+  const REDIRECT_PATH = "/evacuation";
+  const REDIRECT_DELAY_MS = 1200;
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      router.replace("/evacuation");
-    }, 1200); // 1.2秒後に遷移
+      router.replace(REDIRECT_PATH);
+    }, REDIRECT_DELAY_MS);
 
     return () => clearTimeout(timer);
   }, [router]);
