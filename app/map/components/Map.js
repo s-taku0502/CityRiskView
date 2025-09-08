@@ -10,7 +10,7 @@ import PopupInfo from './PopupInfo'; // 追加
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
 
-export default function Map({ onShelterSelect }) {
+export default function Map({ center, onShelterSelect }) {
   const mapContainer = useRef(null);
   const mapInstance = useRef(null);
   const currentLocationMarker = useRef(null);
@@ -169,6 +169,13 @@ export default function Map({ onShelterSelect }) {
       }
     };
   }, [loadSheltersFromSupabase, getCurrentLocation]);
+
+  useEffect(() => {
+    if (center && mapInstance.current) {
+      // center: { latitude, longitude }
+      mapInstance.current.setCenter([center.longitude, center.latitude]);
+    }
+  }, [center]);
 
   return (
     <div>

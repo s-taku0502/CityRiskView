@@ -75,6 +75,11 @@ export default function EvacuationMap({ currentLocation, nearestShelter, allShel
         {/* 既存のMapコンポーネントを使用 */}
         <div className="h-96 rounded-lg overflow-hidden">
           <Map 
+            center={
+              selectedShelter
+                ? { latitude: selectedShelter.latitude, longitude: selectedShelter.longitude }
+                : undefined
+            }
             onShelterSelect={handleShelterSelect}
             highlightedShelter={nearestShelter}
             currentLocation={currentLocation}
