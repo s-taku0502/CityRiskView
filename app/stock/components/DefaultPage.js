@@ -65,32 +65,9 @@ export default function StockViewPage() {
 
   return (
     <div className="p-4 space-y-6">
-      <h2 className="text-2xl font-bold text-center">避難所の備蓄情報（閲覧専用）</h2>
-      <p className="text-center text-sm text-gray-600">
-        ※ このページは閲覧専用です。備蓄の利用・補充はできません。
-      </p>
-
-      {/* 管理者・利用者向けアクセスフォーム */}
-      <div className="p-2 text-center">
-        <h4 className="font-semibold text-lg">管理者・利用者の方はこちら</h4>
-        <p className="text-sm text-gray-500 mb-2">避難所IDを入力して、操作ページへ移動</p>
-        <input
-          type="text"
-          value={shelterId}
-          onChange={(e) => setShelterId(e.target.value)}
-          placeholder="避難所IDを入力"
-          className="border px-3 py-2 rounded w-64"
-        />
-        <button
-          onClick={handleAccess}
-          className="ml-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-        >
-          移動する
-        </button>
-      </div>
 
       {/* フィルター UI */}
-      <div className="mb-8 border-t-2 border-gray-300" />
+      {/* <div className="mb-8 border-t-2 border-gray-300" /> */}
       <div className="mt-6">
         <h4 className="font-semibold text-lg mb-2">避難所の絞り込み</h4>
         <FilterPanel
