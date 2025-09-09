@@ -1,6 +1,8 @@
 'use client';
 import FilterPanel from '@/components/FilterPanel';
 import { extractPrefectureAndCity } from '@/app/utils/address';
+import { prefectures } from '@/app/utils/prefectures';
+import { fetchCitiesByPref } from '@/app/utils/cityApi';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
@@ -12,14 +14,13 @@ export default function StockViewPage() {
   const [prefecture, setPrefecture] = useState('');
   const [city, setCity] = useState('');
   const [shelters, setShelters] = useState([]);
-  const [prefectureOptions, setPrefectureOptions] = useState([]);
+  const [prefectureOptions] = useState(prefectures);
   const [cityOptions, setCityOptions] = useState([]);
 
   const router = useRouter();
 
   useEffect(() => {
     fetchShelters();
-    fetchPrefectures();
   }, []);
 
   useEffect(() => {
@@ -52,35 +53,10 @@ export default function StockViewPage() {
     }
   };
 
-  // 都道府県一覧をDBから取得
-  const fetchPrefectures = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('shelters')
-        .select('prefecture')
-        .distinct();
-      if (error) throw error;
-      setPrefectureOptions(data.map(d => d.prefecture));
-    } catch (error) {
-      console.error('Error fetching prefectures:', error);
-      setPrefectureOptions([]);
-    }
-  };
-
-  // 市区町村一覧をDBから取得（都道府県で絞る）
+  // 市区町村一覧をAPIから取得
   const fetchCities = async (selectedPrefecture) => {
-    try {
-      const { data, error } = await supabase
-        .from('shelters')
-        .select('city')
-        .eq('prefecture', selectedPrefecture)
-        .distinct();
-      if (error) throw error;
-      setCityOptions(data.map(d => d.city));
-    } catch (error) {
-      console.error('Error fetching cities:', error);
-      setCityOptions([]);
-    }
+    const cities = await fetchCitiesByPref(selectedPrefecture);
+    setCityOptions(cities);
   };
 
   // 絞り込みロジック
