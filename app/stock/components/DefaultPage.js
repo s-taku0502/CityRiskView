@@ -1,37 +1,50 @@
 'use client';
+import FilterPanel from '@/components/FilterPanel';
+import { extractPrefectureAndCity } from '@/app/utils/address';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import baseStockData from '@/data/ShelterStocks.json';
-import FilterPanel from '@/components/FilterPanel';
 
 export default function StockViewPage() {
-  const [shelterId, setShelterId] = useState('');
   const [keyword, setKeyword] = useState('');
+  const [facilityName, setFacilityName] = useState('');
   const [prefecture, setPrefecture] = useState('');
   const [city, setCity] = useState('');
   const [shelters, setShelters] = useState([]);
+  const [prefectureOptions, setPrefectureOptions] = useState([]);
+  const [cityOptions, setCityOptions] = useState([]);
 
   const router = useRouter();
 
   useEffect(() => {
     fetchShelters();
+    fetchPrefectures();
   }, []);
+
+  useEffect(() => {
+    if (prefecture) {
+      fetchCities(prefecture);
+    } else {
+      setCityOptions([]);
+    }
+  }, [prefecture]);
 
   const fetchShelters = async () => {
     try {
       const { data, error } = await supabase
         .from('shelters')
         .select('*');
-      
       if (error) throw error;
-      
-      // name_kana フィールドを追加（検索用）
-      const sheltersWithKana = data.map(shelter => ({
-        ...shelter,
-        name_kana: [shelter.name, shelter.name.replace(/市立|県立|小学校|中学校|高等学校|公民館/g, '')]
-      }));
-      
+      const sheltersWithKana = data.map(shelter => {
+        const { prefecture, city } = extractPrefectureAndCity(shelter.address || "");
+        return {
+          ...shelter,
+          name_kana: [shelter.name, shelter.name.replace(/市立|県立|小学校|中学校|高等学校|公民館/g, '')],
+          prefecture,
+          city,
+        };
+      });
       setShelters(sheltersWithKana);
     } catch (error) {
       console.error('Error fetching shelters:', error);
@@ -39,40 +52,61 @@ export default function StockViewPage() {
     }
   };
 
-  const handleAccess = () => {
-    if (shelterId.trim()) {
-      router.push(`/stock/manage?id=${shelterId}`);
+  // 都道府県一覧をDBから取得
+  const fetchPrefectures = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('shelters')
+        .select('prefecture')
+        .distinct();
+      if (error) throw error;
+      setPrefectureOptions(data.map(d => d.prefecture));
+    } catch (error) {
+      console.error('Error fetching prefectures:', error);
+      setPrefectureOptions([]);
     }
   };
 
-  const prefectureOptions = [...new Set(shelters.map((s) => s.prefecture))];
-  const cityOptions = [...new Set(
-    shelters
-      .filter((s) => !prefecture || s.prefecture === prefecture)
-      .map((s) => s.city)
-  )];
+  // 市区町村一覧をDBから取得（都道府県で絞る）
+  const fetchCities = async (selectedPrefecture) => {
+    try {
+      const { data, error } = await supabase
+        .from('shelters')
+        .select('city')
+        .eq('prefecture', selectedPrefecture)
+        .distinct();
+      if (error) throw error;
+      setCityOptions(data.map(d => d.city));
+    } catch (error) {
+      console.error('Error fetching cities:', error);
+      setCityOptions([]);
+    }
+  };
 
+  // 絞り込みロジック
   const filteredShelters = shelters.filter((shelter) => {
     const matchesKeyword =
       !keyword ||
       shelter.name_kana.some((k) =>
         k.toLowerCase().includes(keyword.toLowerCase())
       );
+    const matchesFacilityName =
+      !facilityName ||
+      shelter.name.toLowerCase().includes(facilityName.toLowerCase());
     const matchesPrefecture = !prefecture || shelter.prefecture === prefecture;
     const matchesCity = !city || shelter.city === city;
-    return matchesKeyword && matchesPrefecture && matchesCity;
+    return matchesKeyword && matchesFacilityName && matchesPrefecture && matchesCity;
   });
 
   return (
     <div className="p-4 space-y-6">
-
-      {/* フィルター UI */}
-      {/* <div className="mb-8 border-t-2 border-gray-300" /> */}
       <div className="mt-6">
         <h4 className="font-semibold text-lg mb-2">避難所の絞り込み</h4>
         <FilterPanel
           keyword={keyword}
           setKeyword={setKeyword}
+          facilityName={facilityName}
+          setFacilityName={setFacilityName}
           prefecture={prefecture}
           setPrefecture={setPrefecture}
           city={city}
@@ -81,15 +115,11 @@ export default function StockViewPage() {
           cityOptions={cityOptions}
         />
       </div>
-
-      {/* 絞り込んだ避難所の表示 */}
       {filteredShelters.map((shelter) => {
         const stock = baseStockData[shelter.id] || [];
-
         return (
           <div key={shelter.id} className="border rounded p-4 shadow mt-6">
             <h3 className="text-xl font-semibold mb-2">{shelter.name}</h3>
-
             {Object.entries(
               stock.reduce((acc, item) => {
                 if (!acc[item.category]) acc[item.category] = [];
