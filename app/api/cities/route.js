@@ -9,7 +9,7 @@ export async function GET(request) {
     const res = await fetch(apiUrl);
     if (!res.ok) {
       const errorText = await res.text();
-      return Response.json({ error: errorText, cities: [] }, { status: 500 });
+      return Response.json({ error: errorText, cities: [] }, { status: res.status });
     }
     const data = await res.json();
     return Response.json({ cities: data });
