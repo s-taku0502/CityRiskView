@@ -1,15 +1,14 @@
 import { prefectures } from './prefectures';
 
 export function extractPrefectureAndCity(address) {
-  let prefecture = "";
-  let city = "";
+  const foundPref = prefectures.find(pref => address.startsWith(pref));
 
-  for (const pref of prefectures) {
-    if (address.startsWith(pref)) {
-      prefecture = pref;
-      city = address.substring(pref.length);
-      break;
-    }
+  if (foundPref) {
+    return {
+      prefecture: foundPref,
+      city: address.substring(foundPref.length),
+    };
   }
-  return { prefecture, city };
+
+  return { prefecture: "", city: "" };
 }
