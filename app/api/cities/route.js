@@ -2,7 +2,7 @@ export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const prefName = searchParams.get('pref');
   if (!prefName) {
-    return Response.json({ error: 'prefName is missing', cities: [] }, { status: 400 });
+    return Response.json({ error: 'Query parameter \"pref\" is missing', cities: [] }, { status: 400 });
   }
   const baseApiUrl = process.env.NEXT_PUBLIC_JAPAN_CITIES_API_ENDPOINT;
   if (!baseApiUrl) {
