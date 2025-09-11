@@ -14,7 +14,11 @@ export async function GET(request) {
     const res = await fetch(apiUrl);
     if (!res.ok) {
       const errorText = await res.text();
-      return Response.json({ error: errorText, cities: [] }, { status: res.status });
+      try {
+        return Response.json({ error: JSON.parse(errorText), cities: [] }, { status: res.status });
+      } catch {
+        return Response.json({ error: errorText, cities: [] }, { status: res.status });
+      }
     }
     const data = await res.json();
     return Response.json({ cities: data });
