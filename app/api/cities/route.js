@@ -4,7 +4,12 @@ export async function GET(request) {
   if (!prefName) {
     return Response.json({ error: 'prefName is missing', cities: [] }, { status: 400 });
   }
-  const apiUrl = `${process.env.NEXT_PUBLIC_JAPAN_CITIES_API_ENDPOINT}?prefecture=${encodeURIComponent(prefName)}`;
+  const baseApiUrl = process.env.NEXT_PUBLIC_JAPAN_CITIES_API_ENDPOINT;
+  if (!baseApiUrl) {
+    console.error('NEXT_PUBLIC_JAPAN_CITIES_API_ENDPOINT is not set');
+    return Response.json({ error: 'Server configuration error', cities: [] }, { status: 500 });
+  }
+  const apiUrl = `${baseApiUrl}?prefecture=${encodeURIComponent(prefName)}`;
   try {
     const res = await fetch(apiUrl);
     if (!res.ok) {
