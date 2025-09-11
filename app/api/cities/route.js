@@ -12,7 +12,7 @@ export async function GET(request) {
       return Response.json({ error: errorText, cities: [] }, { status: 500 });
     }
     const data = await res.json();
-    return Response.json(data);
+    return Response.json({ cities: data });
   } catch (error) {
     return Response.json({ error: error.message, cities: [] }, { status: 500 });
   }
