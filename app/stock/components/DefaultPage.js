@@ -70,7 +70,7 @@ export default function StockViewPage() {
       !facilityName ||
       shelter.name.toLowerCase().includes(facilityName.toLowerCase());
     const matchesPrefecture = !prefecture || shelter.prefecture === prefecture;
-    const matchesCity = !city || shelter.city === city;
+    const matchesCity = !city || shelter.city.startsWith(city);
     return matchesKeyword && matchesFacilityName && matchesPrefecture && matchesCity;
   });
 
