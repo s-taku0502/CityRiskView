@@ -1,16 +1,21 @@
 'use client';
+import FilterPanel from '@/components/FilterPanel';
+import { extractPrefectureAndCity } from '@/app/utils/address';
+import { prefectures } from '@/app/utils/prefectures';
+import { fetchCitiesByPref } from '@/app/utils/cityApi';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import baseStockData from '@/data/ShelterStocks.json';
-import FilterPanel from '@/components/FilterPanel';
 
 export default function StockViewPage() {
-  const [shelterId, setShelterId] = useState('');
   const [keyword, setKeyword] = useState('');
+  const [facilityName, setFacilityName] = useState('');
   const [prefecture, setPrefecture] = useState('');
   const [city, setCity] = useState('');
   const [shelters, setShelters] = useState([]);
+  const [prefectureOptions] = useState(prefectures);
+  const [cityOptions, setCityOptions] = useState([]);
 
   const router = useRouter();
 
@@ -18,20 +23,29 @@ export default function StockViewPage() {
     fetchShelters();
   }, []);
 
+  useEffect(() => {
+    if (prefecture) {
+      fetchCities(prefecture);
+    } else {
+      setCityOptions([]);
+    }
+  }, [prefecture]);
+
   const fetchShelters = async () => {
     try {
       const { data, error } = await supabase
         .from('shelters')
         .select('*');
-      
       if (error) throw error;
-      
-      // name_kana フィールドを追加（検索用）
-      const sheltersWithKana = data.map(shelter => ({
-        ...shelter,
-        name_kana: [shelter.name, shelter.name.replace(/市立|県立|小学校|中学校|高等学校|公民館/g, '')]
-      }));
-      
+      const sheltersWithKana = data.map(shelter => {
+        const { prefecture, city } = extractPrefectureAndCity(shelter.address || "");
+        return {
+          ...shelter,
+          name_kana: [shelter.name, shelter.name.replace(/市立|県立|小学校|中学校|高等学校|公民館/g, '')],
+          prefecture,
+          city,
+        };
+      });
       setShelters(sheltersWithKana);
     } catch (error) {
       console.error('Error fetching shelters:', error);
@@ -39,63 +53,36 @@ export default function StockViewPage() {
     }
   };
 
-  const handleAccess = () => {
-    if (shelterId.trim()) {
-      router.push(`/stock/manage?id=${shelterId}`);
-    }
+  // 市区町村一覧をAPIから取得
+  const fetchCities = async (selectedPrefecture) => {
+    const cities = await fetchCitiesByPref(selectedPrefecture);
+    setCityOptions(cities);
   };
 
-  const prefectureOptions = [...new Set(shelters.map((s) => s.prefecture))];
-  const cityOptions = [...new Set(
-    shelters
-      .filter((s) => !prefecture || s.prefecture === prefecture)
-      .map((s) => s.city)
-  )];
-
+  // 絞り込みロジック
   const filteredShelters = shelters.filter((shelter) => {
     const matchesKeyword =
       !keyword ||
       shelter.name_kana.some((k) =>
         k.toLowerCase().includes(keyword.toLowerCase())
       );
+    const matchesFacilityName =
+      !facilityName ||
+      shelter.name.toLowerCase().includes(facilityName.toLowerCase());
     const matchesPrefecture = !prefecture || shelter.prefecture === prefecture;
-    const matchesCity = !city || shelter.city === city;
-    return matchesKeyword && matchesPrefecture && matchesCity;
+    const matchesCity = !city || shelter.city.startsWith(city);
+    return matchesKeyword && matchesFacilityName && matchesPrefecture && matchesCity;
   });
 
   return (
     <div className="p-4 space-y-6">
-      <h2 className="text-2xl font-bold text-center">避難所の備蓄情報（閲覧専用）</h2>
-      <p className="text-center text-sm text-gray-600">
-        ※ このページは閲覧専用です。備蓄の利用・補充はできません。
-      </p>
-
-      {/* 管理者・利用者向けアクセスフォーム */}
-      <div className="p-2 text-center">
-        <h4 className="font-semibold text-lg">管理者・利用者の方はこちら</h4>
-        <p className="text-sm text-gray-500 mb-2">避難所IDを入力して、操作ページへ移動</p>
-        <input
-          type="text"
-          value={shelterId}
-          onChange={(e) => setShelterId(e.target.value)}
-          placeholder="避難所IDを入力"
-          className="border px-3 py-2 rounded w-64"
-        />
-        <button
-          onClick={handleAccess}
-          className="ml-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-        >
-          移動する
-        </button>
-      </div>
-
-      {/* フィルター UI */}
-      <div className="mb-8 border-t-2 border-gray-300" />
       <div className="mt-6">
         <h4 className="font-semibold text-lg mb-2">避難所の絞り込み</h4>
         <FilterPanel
           keyword={keyword}
           setKeyword={setKeyword}
+          facilityName={facilityName}
+          setFacilityName={setFacilityName}
           prefecture={prefecture}
           setPrefecture={setPrefecture}
           city={city}
@@ -104,15 +91,11 @@ export default function StockViewPage() {
           cityOptions={cityOptions}
         />
       </div>
-
-      {/* 絞り込んだ避難所の表示 */}
       {filteredShelters.map((shelter) => {
         const stock = baseStockData[shelter.id] || [];
-
         return (
           <div key={shelter.id} className="border rounded p-4 shadow mt-6">
             <h3 className="text-xl font-semibold mb-2">{shelter.name}</h3>
-
             {Object.entries(
               stock.reduce((acc, item) => {
                 if (!acc[item.category]) acc[item.category] = [];
