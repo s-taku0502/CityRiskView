@@ -31,7 +31,7 @@ export default function Sidebar() {
           { href: "/alert", text: "アラート情報" },
           { href: "/evacuation", text: "避難情報" },
           { href: "/update", text: "更新情報" },
-          { href: "/only_events", text: "システム改善アンケート" },
+          { href: "/only_events", text: "システムに関するアンケート", small: true },
         ];
       } else {
         MenuItems = [
@@ -93,7 +93,7 @@ export default function Sidebar() {
                   key={item.href}
                   href={item.href}
                   onClick={() => setIsOpen(false)}
-                  className="text-lg py-2"
+                  className={`py-2 ${item.small ? "text-sm" : "text-xl"}`}
                 >
                   {item.text}
                 </Link>
@@ -110,7 +110,13 @@ export default function Sidebar() {
       <h1 className="text-2xl font-bold mb-8">CityRiskView</h1>
       <nav className="flex flex-col gap-4">
         {menuItems.map((item) => (
-          <Link key={item.href} href={item.href}>{item.text}</Link>
+          <Link
+            key={item.href}
+            href={item.href}
+            className={item.small ? "text-sm" : "text-xl"}
+          >
+            {item.text}
+          </Link>
         ))}
       </nav>
     </div>
