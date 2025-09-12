@@ -7,7 +7,7 @@ import StockManagement from './components/StockManagement'
 import EventCodeManagement from './components/EventCodeManagement'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
-// import { developerEmail } from '@/lib/supabase'
+import GitHubReleaseInfo from './components/GitHubReleaseInfo'
 
 export default function AdminPage() {
   const [currentView, setCurrentView] = useState('map')
@@ -129,6 +129,8 @@ export default function AdminPage() {
             </div>
           </div>
         )
+      case 'release':
+        return <GitHubReleaseInfo />
       default:
         return (
           <div className="bg-white rounded-lg shadow p-6">
@@ -271,6 +273,16 @@ export default function AdminPage() {
                         }`}
                     >
                       イベント管理
+                    </button>
+
+                    <button
+                      onClick={() => setCurrentView('release')}
+                      className={`w-full px-4 py-2 rounded-md text-sm font-medium ${currentView === 'release'
+                          ? 'bg-gray-800 text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        }`}
+                    >
+                      🚀 リリース情報
                     </button>
                   </div>
                 </div>
