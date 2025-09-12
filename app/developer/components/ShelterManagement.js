@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from 'react';
 import { supabase, getWriteClient } from "../../../lib/supabase";
 import Papa from 'papaparse';
+import { prefectures } from '@/app/utils/prefectures';
+import { shelterSchema } from '@/app/utils/shelterSchema';
 
 export default function ShelterManagement() {
   const [shelters, setShelters] = useState([]);
@@ -1356,6 +1358,118 @@ export default function ShelterManagement() {
           </table>
         </div>
       </div>
+
+      {/* 修正: 避難所追加・編集フォーム */}
+      <div className="bg-white p-6 rounded-lg shadow-md">
+        <h3 className="text-lg font-semibold mb-4">避難所の追加・編集</h3>
+        
+        <ShelterForm onSubmit={async (shelterData) => {
+          try {
+            // 保存処理
+            await Promise.all([
+              fetchShelters(),
+              fetchAllShelterStocks()
+            ]);
+          } catch (error) {
+            setMessage("避難所の保存に失敗しました: " + error.message);
+          } finally {
+            setIsLoading(false);
+          }
+        }} />
+      </div>
     </div>
+  );
+}
+
+function ShelterForm({ onSubmit }) {
+  const [formData, setFormData] = useState(() =>
+    Object.fromEntries(shelterSchema.map(f => [f.key, '']))
+  );
+  const [cities, setCities] = useState([]);
+
+  useEffect(() => {
+    if (!formData.prefecture) {
+      setCities([]);
+      setFormData(fd => ({ ...fd, city: '' }));
+      return;
+    }
+    fetch(`/api/cities?pref=${encodeURIComponent(formData.prefecture)}`)
+      .then(res => res.json())
+      .then(data => setCities(data.cities || []));
+  }, [formData.prefecture]);
+
+  const handleChange = (e) => {
+    const { name, value, type } = e.target;
+    setFormData(fd => ({
+      ...fd,
+      [name]: type === 'number' ? Number(value) : value
+    }));
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onSubmit(formData);
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-6">
+      {shelterSchema.map(field => {
+        if (field.key === 'prefecture') {
+          return (
+            <div key={field.key}>
+              <label className="block mb-1">{field.label} <span className="text-red-500">*</span></label>
+              <select
+                name="prefecture"
+                value={formData.prefecture}
+                onChange={handleChange}
+                required={field.required}
+                className="w-full p-2 border rounded"
+              >
+                <option value="">選択してください</option>
+                {prefectures.map(pref => (
+                  <option key={pref} value={pref}>{pref}</option>
+                ))}
+              </select>
+            </div>
+          );
+        }
+        if (field.key === 'city') {
+          return (
+            <div key={field.key}>
+              <label className="block mb-1">{field.label} <span className="text-red-500">*</span></label>
+              <select
+                name="city"
+                value={formData.city}
+                onChange={handleChange}
+                required={field.required}
+                disabled={!formData.prefecture}
+                className="w-full p-2 border rounded"
+              >
+                <option value="">選択してください</option>
+                {cities.map(c => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+            </div>
+          );
+        }
+        return (
+          <div key={field.key}>
+            <label className="block mb-1">{field.label}{field.required && <span className="text-red-500">*</span>}</label>
+            <input
+              type={field.type}
+              name={field.key}
+              value={formData[field.key]}
+              onChange={handleChange}
+              required={field.required}
+              placeholder={field.placeholder}
+              className="w-full p-2 border rounded"
+              step={field.type === 'number' ? 'any' : undefined}
+            />
+          </div>
+        );
+      })}
+      <button type="submit" className="px-6 py-2 bg-green-600 text-white rounded hover:bg-green-700">登録</button>
+    </form>
   );
 }
