@@ -125,12 +125,20 @@ export default function DeveloperPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
             <h1 className="text-3xl font-bold text-gray-900">開発者管理画面</h1>
-            <button
-              onClick={handleLogout}
-              className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
-            >
-              ログアウト
-            </button>
+            <div>
+              <button
+                onClick={() => router.push("/admin")}
+                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 mr-4"
+              >
+                管理者画面へ
+              </button>
+              <button
+                onClick={handleLogout}
+                className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+              >
+                ログアウト
+              </button>
+            </div>
           </div>
         </div>
       </header>
@@ -149,11 +157,10 @@ export default function DeveloperPage() {
               <button
                 key={tab.key}
                 onClick={() => setCurrentView(tab.key)}
-                className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                  currentView === tab.key
+                className={`py-4 px-1 border-b-2 font-medium text-sm ${currentView === tab.key
                     ? "border-blue-500 text-blue-600"
                     : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                }`}
+                  }`}
               >
                 {tab.label}
               </button>
