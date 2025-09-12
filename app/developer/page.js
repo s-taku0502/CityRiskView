@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import AuthGuard from "@/components/AuthGuard";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import ShelterManagement from "./components/ShelterManagement";
@@ -10,42 +9,13 @@ export default function DeveloperPage() {
   const [currentView, setCurrentView] = useState("shelters");
   const [updates, setUpdates] = useState([]);
   const [systemLogs, setSystemLogs] = useState([]);
-  const [isDeveloper, setIsDeveloper] = useState(false);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
-    checkDeveloperAccess();
-  }, []);
-
-  const checkDeveloperAccess = async () => {
-    try {
-      const {
-        data: { user },
-        error,
-      } = await supabase.auth.getUser();
-
-      if (error || !user) {
-        router.push("/login");
-        return;
-      }
-
-      // 開発者権限チェック
-      const developerEmails = ["sudoproject.personal@gmail.com"];
-      if (!developerEmails.includes(user.email)) {
-        alert("開発者権限が必要です");
-        router.push("/admin");
-        return;
-      }
-
-      setIsDeveloper(true);
-      await fetchData();
-    } catch (error) {
-      console.error("Developer access check failed:", error);
-      router.push("/admin");
-    }
+    fetchData();
     setLoading(false);
-  };
+  }, []);
 
   const fetchData = async () => {
     await Promise.all([fetchUpdates(), fetchSystemLogs()]);
@@ -106,14 +76,6 @@ export default function DeveloperPage() {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-lg">読み込み中...</div>
-      </div>
-    );
-  }
-
-  if (!isDeveloper) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-lg text-red-600">権限がありません</div>
       </div>
     );
   }
