@@ -19,8 +19,8 @@ export default function Sidebar() {
 
     const setupMenuItems = () => {
       const currentDate = new Date();
-      const recruitmentStart = new Date(`${eventData.recruitmentStartDate}T00:00:00`);
-      const eventEndDate = new Date(`${eventData.eventDate}T00:00:00`);
+      const recruitmentStart = new Date(`${eventData.recruitmentStartDate}T00:00:00+09:00`);
+      const eventEndDate = new Date(`${eventData.eventDate}T00:00:00+09:00`);
       eventEndDate.setDate(eventEndDate.getDate() + 1);
 
       let MenuItems = [];
