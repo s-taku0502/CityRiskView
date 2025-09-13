@@ -19,15 +19,14 @@ export default function Sidebar() {
 
     const setupMenuItems = () => {
       const currentDate = new Date();
-      const recruitmentStart = new Date(eventData.recruitmentStartDate);
-      const eventDate = new Date(eventData.eventDate);
-      const eventDatePlusOne = new Date(eventDate);
-      eventDatePlusOne.setDate(eventDate.getDate() + 1);
+      const recruitmentStart = new Date(`${eventData.recruitmentStartDate}T00:00:00+09:00`);
+      const eventEndDate = new Date(`${eventData.eventDate}T00:00:00+09:00`);
+      eventEndDate.setDate(eventEndDate.getDate() + 1);
 
       let MenuItems = [];
 
-      // 募集開始日からイベント日の間かチェック
-      if (currentDate >= recruitmentStart && currentDate <= eventDatePlusOne) {
+      // 募集開始日からイベント日の間かチェック（イベント翌日0時まで表示）
+      if (currentDate >= recruitmentStart && currentDate < eventEndDate) {
         MenuItems = [
           { href: "/stock", text: "備蓄情報" },
           { href: "/alert", text: "アラート情報" },
