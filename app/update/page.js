@@ -73,7 +73,7 @@ export default function UpdatePage() {
       {error && <div className="text-red-600">エラー: {error}</div>}
       {release && (
         <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-medium mb-2">
+          <h2 className="text-black text-lg font-medium mb-2">
             最新バージョン: {release.tag_name}
           </h2>
           <p className="text-sm text-gray-500 mb-2">
