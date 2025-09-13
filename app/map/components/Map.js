@@ -201,14 +201,18 @@ export default function Map({ center, onShelterSelect }) {
           )}
         </div>
       </div>
+      <a className='text-black'>
       ページが正しく表示されない場合は、
+      </a>
       <button
         onClick={() => window.location.reload()}
         className="mt-2 text-blue-600 font-bold rounded"
       >
         こちら
       </button>
+      <a className='text-black'>
       をクリックして再読み込みしてください。
+      </a>
     </div>
   );
 }
