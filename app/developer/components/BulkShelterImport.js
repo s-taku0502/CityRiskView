@@ -151,7 +151,6 @@ export default function BulkShelterImport({ onImport }) {
       });
 
       // 重複チェック（例: name + address で重複判定）
-      // ※既存データ取得は省略。ここではcsv内での重複例
       const seen = new Set();
       let hasDuplicate = false;
       dbRecords.forEach(rec => {
@@ -164,12 +163,18 @@ export default function BulkShelterImport({ onImport }) {
 
       if (hasDuplicate) {
         setMessage('重複あり：既存データを上書きします');
-        // 上書き処理（例: upsert）
-        // await supabase.from('shelters').upsert(dbRecords, { onConflict: ['name', 'address'] });
       } else {
         setMessage('重複なし：新規データとして反映します');
-        // 通常のinsert
-        // await supabase.from('shelters').insert(dbRecords);
+      }
+
+      // onImportを呼び出して親コンポーネントに処理を委譲
+      if (onImport) {
+        await onImport(dbRecords);
+        setMessage(prev => prev + `\n${dbRecords.length}件のデータのインポート処理を要求しました。`);
+      } else {
+        // onImportが渡されない場合のフォールバック
+        console.warn('onImport prop is not provided. Data is not saved.');
+        setMessage(prev => prev + '\nプレビューのみ：onImportプロップがありません。');
       }
 
     } catch (err) {
