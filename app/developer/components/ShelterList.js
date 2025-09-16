@@ -1,12 +1,6 @@
 // 登録済み避難所一覧表示用のコンポーネント
 import React from 'react';
-import { supabase } from '@supabase/auth-ui-shared';
-import { createClient } from '@supabase/supabase-js';
-
-// supabaseクライアントの初期化（環境変数などで設定してください）
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-const supabaseClient = createClient(supabaseUrl, supabaseKey);
+import React from 'react';
 
 export default function ShelterList({ shelters, onDelete }) {
   return (
