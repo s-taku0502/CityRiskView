@@ -1,6 +1,5 @@
 // 登録済み避難所一覧表示用のコンポーネント
 import React from 'react';
-import React from 'react';
 
 export default function ShelterList({ shelters, onDelete }) {
   return (

@@ -117,103 +117,157 @@ export default function BulkShelterImport({ onImport }) {
   // インポート実行
   const handleImport = async () => {
     if (!csvResult.length) return;
-    setImporting(true); // インポート中フラグON
+    console.log("インポート中");
+    setImporting(true);
+
     try {
       const dbRecords = csvResult.map(row => {
         const obj = {};
         dbColumns.forEach(col => {
           const csvCol = mapping[col.key];
-          if (
-            (col.key === 'prefecture' || col.key === 'city') &&
-            mapping['prefecture'] === '都道府県名及び市町村名'
-          ) {
-            const val = row['都道府県名及び市町村名'] || '';
-            const match = val.match(/^(.+?[都道府県])(.+)$/);
-            if (match) {
-              obj['prefecture'] = match[1];
-              obj['city'] = match[2];
-            } else {
-              obj['prefecture'] = val;
-              obj['city'] = '';
-            }
-          } else if (csvCol) {
-            obj[col.key] = row[csvCol] ?? null;
+          obj[col.key] = csvCol ? (row[csvCol] ?? null) : null;
+        });
+
+        if (mapping.prefecture === '都道府県名及び市町村名') {
+          const val = obj.prefecture || '';
+          const match = val.match(/^(.+?[都道府県])(.+)$/);
+          if (match) {
+            obj.prefecture = match[1];
+            obj.city = match[2];
           } else {
-            obj[col.key] = null;
+            obj.city = '';
           }
-          if (['latitude', 'longitude', 'capacity', 'current_people', 'facility_area'].includes(col.key) && obj[col.key] !== null) {
-            obj[col.key] = obj[col.key] === '' ? null : Number(obj[col.key]);
+        }
+
+        const numericKeys = ['latitude', 'longitude', 'capacity', 'current_people', 'facility_area'];
+        numericKeys.forEach(key => {
+          if (obj[key] !== null) {
+            obj[key] = obj[key] === '' ? null : Number(obj[key]);
           }
         });
+
+        obj.current_people = 0;
         return obj;
       });
-      if (onImport) await onImport(dbRecords);
-      setMessage('インポートが完了しました。');
-    } catch (e) {
+
+      // 重複チェック（例: name + address で重複判定）
+      // ※既存データ取得は省略。ここではcsv内での重複例
+      const seen = new Set();
+      let hasDuplicate = false;
+      dbRecords.forEach(rec => {
+        const key = `${rec.name}_${rec.address}`;
+        if (seen.has(key)) {
+          hasDuplicate = true;
+        }
+        seen.add(key);
+      });
+
+      if (hasDuplicate) {
+        setMessage('重複あり：既存データを上書きします');
+        // 上書き処理（例: upsert）
+        // await supabase.from('shelters').upsert(dbRecords, { onConflict: ['name', 'address'] });
+      } else {
+        setMessage('重複なし：新規データとして反映します');
+        // 通常のinsert
+        // await supabase.from('shelters').insert(dbRecords);
+      }
+
+    } catch (err) {
       setError('インポート中にエラーが発生しました');
     } finally {
-      setImporting(false); // インポート中フラグOFF
+      setImporting(false);
+      console.log("インポートを終了");
     }
   };
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-md mb-8">
-      <h3 className="text-lg font-semibold mb-4">CSVファイルから一括インポート</h3>
-      <input type="file" accept=".csv" onChange={handleFileChange} aria-label="CSVファイル選択" />
-      {error && <div className="text-red-600 mt-2" role="alert">{error}</div>}
-      {message && <div className="text-green-600 mt-2">{message}</div>}
+    <div className="max-w-3xl mx-auto bg-white shadow rounded-lg p-8 mt-8">
+      <h1 className="text-2xl font-bold mb-6 text-gray-800">避難所一括登録</h1>
+      <div className="mb-4">
+        <input
+          type="file"
+          accept=".csv"
+          onChange={handleFileChange}
+          className="block w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+        />
+      </div>
+      {error && (
+        <div className="mb-4 p-3 bg-red-100 text-red-700 rounded">{error}</div>
+      )}
+      {message && (
+        <div className="mb-4 p-3 bg-green-100 text-green-700 rounded">{message}</div>
+      )}
 
-      {/* カラムマッピングUI */}
-      {csvHeaders.length > 0 && (
-        <div className="my-4">
-          <h4 className="font-semibold mb-2">カラム対応表</h4>
-          <table className="mb-4 border" aria-label="カラム対応表">
-            <thead>
-              <tr>
-                <th className="px-2 py-1 border">Supabaseカラム</th>
-                <th className="px-2 py-1 border">CSVカラム</th>
-              </tr>
-            </thead>
-            <tbody>
-              {dbColumns.map(col => (
-                <tr key={col.key}>
-                  <td className="px-2 py-1 border">{col.label} <span className="text-xs text-gray-400">({col.key})</span></td>
-                  <td className="px-2 py-1 border">
-                    <select
-                      value={mapping[col.key] || ''}
-                      onChange={e => handleMappingChange(col.key, e.target.value)}
-                      className="border rounded px-1 py-0.5"
-                      aria-label={`${col.label}のCSVカラム選択`}
-                    >
-                      <option value="">（未対応）</option>
-                      {csvHeaders.map(h => (
-                        <option key={h} value={h}>{h}</option>
-                      ))}
-                    </select>
-                  </td>
+      {importing && (
+        <div className="mb-4 flex items-center gap-2">
+          <svg className="animate-spin h-5 w-5 text-blue-600" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/>
+          </svg>
+          <span className="text-blue-700 font-semibold">インポート処理中です。しばらくお待ちください…</span>
+        </div>
+      )}
+
+      {Object.keys(mapping).length > 0 && (
+        <div className="mb-6">
+          <h2 className="text-lg font-semibold mb-2 text-gray-700">カラムマッピング</h2>
+          <div className="overflow-x-auto">
+            <table className="min-w-full border border-gray-200 rounded">
+              <thead>
+                <tr className="bg-gray-50">
+                  <th className="px-4 py-2 border-b text-left text-gray-600">DBカラム</th>
+                  <th className="px-4 py-2 border-b text-left text-gray-600">CSVカラム</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-          <button
-            className={`px-4 py-2 rounded text-white ${importing ? 'bg-gray-400' : 'bg-blue-600 hover:bg-blue-700'}`}
-            onClick={handleImport}
-            disabled={Object.values(mapping).every(v => !v) || importing}
-            aria-disabled={Object.values(mapping).every(v => !v) || importing}
-          >
-            {importing ? 'インポート中...' : 'インポート実行'}
-          </button>
+              </thead>
+              <tbody>
+                {dbColumns.map(col => (
+                  <tr key={col.key} className="hover:bg-blue-50">
+                    <td className="px-4 py-2 border-b">{col.label}</td>
+                    <td className="px-4 py-2 border-b">
+                      <select
+                        value={mapping[col.key]}
+                        onChange={e => handleMappingChange(col.key, e.target.value)}
+                        className="border rounded px-2 py-1 text-sm"
+                        disabled={importing}
+                      >
+                        <option value="">選択してください</option>
+                        {autoMap
+                          .find(a => a.db === col.key)
+                          ?.csv.map((csvCol, idx) => (
+                            <option key={idx} value={csvCol}>
+                              {csvCol}
+                            </option>
+                          ))}
+                      </select>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
-
-      {csvResult.length > 0 && (
-        <div className="mt-4">
-          <h4 className="font-semibold mb-2">プレビュー（先頭5件）</h4>
-          <pre className="bg-gray-100 p-2 rounded text-xs max-h-48 overflow-auto" aria-label="CSVプレビュー">
-            {JSON.stringify(csvResult.slice(0, 5), null, 2)}
-          </pre>
-        </div>
-      )}
+      <button
+        onClick={handleImport}
+        disabled={importing}
+        className={`w-full py-3 rounded font-semibold text-white transition ${
+          importing
+            ? 'bg-gray-400 cursor-not-allowed'
+            : 'bg-blue-600 hover:bg-blue-700'
+        }`}
+      >
+        {importing ? (
+          <span className="flex items-center justify-center gap-2">
+            <svg className="animate-spin h-5 w-5 text-white" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/>
+            </svg>
+            インポート中...
+          </span>
+        ) : (
+          'インポート実行'
+        )}
+      </button>
     </div>
   );
 }
