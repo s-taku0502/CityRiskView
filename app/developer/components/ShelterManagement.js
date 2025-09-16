@@ -4,13 +4,10 @@ import React, { useState, useEffect } from 'react';
 import BulkShelterImport from './BulkShelterImport';
 import SingleShelterForm from './SingleShelterForm';
 import ShelterList from './ShelterList';
-// supabaseのimport例
-import { createClient } from '@supabase/supabase-js';
+import { supabase, getWriteClient } from '../../../lib/supabase';
 
-// supabaseクライアントの初期化（環境変数などで設定してください）
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-const supabase = createClient(supabaseUrl, supabaseKey);
+// 読み取りは通常のクライアント、書き込みは管理者権限クライアントを使用します
+const writeClient = getWriteClient();
 
 const TABS = [
   { key: "bulk", label: "一括インポート用" },
