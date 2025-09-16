@@ -46,9 +46,35 @@ export default function ShelterManagement() {
   };
 
   const handleDelete = async (id) => {
-    // 削除処理
-    await supabase.from('shelters').delete().eq('id', id);
-    await fetchShelters();
+    if (!confirm("この避難所を削除しますか？")) return;
+    try {
+      const writeClient = getWriteClient();
+      const shelter = shelters.find(s => s.id === id);
+
+      const { error } = await writeClient
+        .from('shelters')
+        .delete()
+        .eq('id', id);
+      if (error) throw error;
+
+      // ログ記録
+      await logAction('INFO', '避難所が削除されました', { 
+        shelterName: shelter?.name || 'Unknown',
+        action: 'shelter_deleted',
+        shelterId: id
+      });
+
+      setMessage("避難所が削除されました");
+
+      // データ再取得
+      await Promise.all([
+        fetchShelters(),
+        fetchAllShelterStocks()
+      ]);
+    } catch (error) {
+      console.error('避難所の削除に失敗:', error);
+      setMessage("避難所の削除に失敗しました: " + error.message);
+    }
   };
 
   return (
