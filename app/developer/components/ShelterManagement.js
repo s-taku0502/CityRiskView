@@ -32,7 +32,7 @@ export default function ShelterManagement() {
   const handleBulkImport = async (parsedList) => {
     // 一括登録処理（例: upsertでまとめて登録）
     if (parsedList && parsedList.length > 0) {
-      await supabase.from('shelters').upsert(parsedList);
+      await writeClient.from('shelters').upsert(parsedList);
     }
     await fetchShelters();
     setActiveTab("list");
