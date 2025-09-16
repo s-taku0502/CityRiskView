@@ -39,8 +39,8 @@ export default function ShelterManagement() {
   };
 
   const handleSingleSubmit = async (form) => {
-    // 個別登録処理
-    await supabase.from('shelters').insert([form]);
+    // 個別登録処理（upsertで重複時に更新）
+    await supabase.from('shelters').upsert(form);
     await fetchShelters();
     setActiveTab("list");
   };
