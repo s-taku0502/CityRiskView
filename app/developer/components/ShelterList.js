@@ -36,7 +36,7 @@ export default function ShelterList({ shelters, onDelete }) {
                   <td className="border p-2 font-medium">{shelter.name}</td>
                   <td className="border p-2 text-sm">{shelter.address}</td>
                   <td className="border p-2 text-center">{shelter.capacity || "-"}</td>
-                  <td className="border p-2 text-sm">{shelter.notes || "-"}</td>
+                  <td className="border p-2 text-sm">{shelter.note || "-"}</td>
                   <td className="border p-2 text-center">
                     <button
                       onClick={() => onDelete(shelter.id)}
