@@ -25,6 +25,14 @@ export default function Map({ center, onShelterSelect }) {
 
   // Supabaseから避難所データを読み込む
   const loadSheltersFromSupabase = useCallback(async () => {
+    // mapInstance.current がなければリトライ
+    if (!mapInstance.current) {
+      console.error('Map instance is not available for adding shelters');
+      // 500ms後に再度試行
+      setTimeout(loadSheltersFromSupabase, 500);
+      return;
+    }
+
     try {
       const { data: shelters, error } = await supabase
         .from('shelters')
