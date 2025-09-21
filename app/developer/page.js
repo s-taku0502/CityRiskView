@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 import { useRouter, useSearchParams } from "next/navigation";
 
@@ -31,8 +31,18 @@ export default function DeveloperPage() {
 
   const currentTab = searchParams.get("tab") || "shelters";
 
+  // --- UI調整中管理用 ---
+  const [adjustingScreens, setAdjustingScreens] = useState({
+    evacuation: false,
+    stock: false,
+    alert: false,
+  });
+  const [selectedScreen, setSelectedScreen] = useState("evacuation");
+  // --- ここまで ---
+
   useEffect(() => {
     checkDeveloperAccess();
+    fetchAdjustingScreens();
   }, []);
 
   const checkDeveloperAccess = async () => {
@@ -50,6 +60,36 @@ export default function DeveloperPage() {
     setLoading(false);
   };
 
+  const fetchAdjustingScreens = async () => {
+    const { data, error } = await supabase
+      .from('ui_adjusting')
+      .select('screen, is_adjusting');
+    if (!error && data) {
+      const newState = { evacuation: false, stock: false, alert: false };
+      data.forEach(row => {
+        if (row.screen in newState) newState[row.screen] = row.is_adjusting;
+      });
+      setAdjustingScreens(newState);
+    }
+  };
+
+  // --- UI調整中切り替え関数 ---
+  const handleAdjustStart = async () => {
+    await supabase
+      .from('ui_adjusting')
+      .update({ is_adjusting: true })
+      .eq('screen', selectedScreen);
+    fetchAdjustingScreens(); // 状態を再取得
+  };
+  const handleAdjustEnd = async () => {
+    await supabase
+      .from('ui_adjusting')
+      .update({ is_adjusting: false })
+      .eq('screen', selectedScreen);
+    fetchAdjustingScreens(); // 状態を再取得
+  };
+  // --- ここまで ---
+
   if (loading) return <div>読み込み中...</div>;
   if (!isDeveloper) return <div>権限がありません</div>;
 
@@ -63,6 +103,38 @@ export default function DeveloperPage() {
           <h1 className="text-3xl font-bold">開発者管理画面</h1>
         </div>
       </header>
+
+      {/* --- UI調整中管理UI --- */}
+      <section className="bg-yellow-50 border border-yellow-300 rounded p-4 m-4">
+        <div className="flex items-center space-x-4">
+          <span>調整対象画面:</span>
+          <select
+            value={selectedScreen}
+            onChange={e => setSelectedScreen(e.target.value)}
+            className="border rounded px-2 py-1"
+          >
+            <option value="evacuation">/evacuation</option>
+            <option value="stock">/stock</option>
+            <option value="alert">/alert</option>
+          </select>
+          <button
+            onClick={handleAdjustStart}
+            className="bg-orange-500 text-white px-3 py-1 rounded"
+          >
+            調整中
+          </button>
+          <button
+            onClick={handleAdjustEnd}
+            className="bg-green-500 text-white px-3 py-1 rounded"
+          >
+            調整終了
+          </button>
+          <span>
+            現在: {adjustingScreens[selectedScreen] ? "調整中" : "通常"}
+          </span>
+        </div>
+      </section>
+      {/* --- ここまで --- */}
 
       {/* タブナビゲーション */}
       <nav className="bg-white border-b">
