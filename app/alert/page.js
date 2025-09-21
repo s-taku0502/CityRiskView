@@ -14,7 +14,7 @@ export default function AlertPage() {
       const { data, error } = await supabase
         .from('ui_adjusting')
         .select('is_adjusting')
-        .eq('screen', 'evacuation')
+        .eq('screen', 'alert')
         .single();
       if (!error && data) setIsAdjusting(data.is_adjusting);
     };
