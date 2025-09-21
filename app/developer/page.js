@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, Suspense } from "react";
 import { supabase } from "@/lib/supabase";
 import { useRouter, useSearchParams } from "next/navigation";
 
@@ -21,7 +21,7 @@ const tabs = [
   { key: "release", label: "リリース情報", component: ReleaseTab },
 ];
 
-export default function DeveloperPage() {
+function DeveloperPageInner() {
   const [isDeveloper, setIsDeveloper] = useState(false);
   const [loading, setLoading] = useState(true);
   const [updates, setUpdates] = useState([]);
@@ -160,5 +160,14 @@ export default function DeveloperPage() {
         <ActiveTabComponent updates={updates} logs={systemLogs} />
       </main>
     </div>
+  );
+}
+
+// エクスポート部分を以下のように修正
+export default function DeveloperPage() {
+  return (
+    <Suspense fallback={<div>読み込み中...</div>}>
+      <DeveloperPageInner />
+    </Suspense>
   );
 }
