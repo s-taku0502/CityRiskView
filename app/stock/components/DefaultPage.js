@@ -119,11 +119,9 @@ export default function StockViewPage() {
       
       setShelters(sheltersWithKana);
       
-      // デバッグ用ログ
       if (prefecture) {
         const addressPrefix = getPrefectureAddressPrefix(prefecture);
-        console.log(`SQL実行: SELECT * FROM shelters WHERE LEFT(address, 3) = '${addressPrefix}'`);
-        console.log(`都道府県: ${prefecture}, 住所プレフィックス: ${addressPrefix}, 該当件数: ${sheltersWithKana.length}`);
+        console.log(`都道府県: ${prefecture}`);
       }
       
     } catch (error) {
@@ -173,14 +171,14 @@ export default function StockViewPage() {
       </div>
       
       {/* 表示件数を表示 */}
-      <div className="text-sm text-gray-600">
+      {/* <div className="text-sm text-gray-600">
         表示件数: {filteredShelters.length}件
         {prefecture && (
           <span className="ml-2 text-blue-600">
             ({prefecture} - 住所が「{getPrefectureAddressPrefix(prefecture)}」で始まる避難所)
           </span>
         )}
-      </div>
+      </div> */}
 
       {filteredShelters.map((shelter) => {
         const stock = baseStockData[shelter.id] || [];
@@ -189,9 +187,6 @@ export default function StockViewPage() {
             <h3 className="text-xl font-semibold mb-2">{shelter.name}</h3>
             <p className="text-sm text-gray-600 mb-2">
               住所: {shelter.address} 
-              <span className="text-xs text-blue-500 ml-2">
-                (左3文字: {shelter.address?.substring(0, 3)})
-              </span>
             </p>
             {Object.entries(
               stock.reduce((acc, item) => {
