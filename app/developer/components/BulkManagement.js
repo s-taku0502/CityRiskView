@@ -570,7 +570,7 @@ export default function BulkManagement() {
             console.log('Current session check:', {
                 hasSession: !!session,
                 hasUser: !!session?.user,
-                userEmail: session?.user?.email,
+                // userEmail: session?.user?.email,
                 sessionError: sessionError?.message
             });
             
@@ -588,7 +588,7 @@ export default function BulkManagement() {
             
             console.log('Starting direct Supabase upload:', { 
                 recordCount: data.length, 
-                user: user.email
+                // user: user.email
             });
 
             // プログレス初期化
@@ -637,8 +637,6 @@ export default function BulkManagement() {
                     updated_at: new Date().toISOString()
                 }));
 
-                console.log(`Processing batch ${currentBatch}/${totalBatches} (${batch.length} items)`);
-
                 try {
                     // 直接Supabaseにinsert
                     const { data: insertedData, error } = await supabase
@@ -646,13 +644,9 @@ export default function BulkManagement() {
                         .insert(batchWithMeta)
                         .select('id');
 
-                    if (error) {
-                        console.error(`Batch ${currentBatch} error:`, error);
-                        
+                    if (error) {                        
                         if (error.code === '23505' || error.message.includes('duplicate')) {
-                            // 重複エラーの場合は個別処理
-                            console.log(`Handling duplicates in batch ${currentBatch} individually...`);
-                            
+                            // 重複エラーの場合は個別処理                            
                             for (const [itemIndex, item] of batchWithMeta.entries()) {
                                 // 中断チェック
                                 if (abortControllerRef.current.signal.aborted) {
@@ -701,7 +695,6 @@ export default function BulkManagement() {
                         }
                     } else {
                         results.success += insertedData.length;
-                        console.log(`Batch ${currentBatch} completed: ${insertedData.length} records inserted`);
                     }
                 } catch (batchError) {
                     console.error(`Batch ${currentBatch} processing error:`, batchError);
@@ -921,7 +914,6 @@ export default function BulkManagement() {
             // 取得したデータの構造をログに出力
             if (data && data.length > 0) {
                 const columns = Object.keys(data[0]);
-                console.log('Available columns:', columns);
                 setMessage(`テーブル構造確認完了。利用可能なカラム: ${columns.join(', ')}`);
             } else {
                 // テーブルが空の場合、insertを試してエラーからカラム情報を取得
@@ -958,9 +950,7 @@ export default function BulkManagement() {
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString()
             };
-            
-            console.log('Test data:', testData);
-            
+
             // 直接Supabaseに挿入
             const { data, error } = await supabase
                 .from('shelters')
@@ -971,7 +961,6 @@ export default function BulkManagement() {
                 console.error('Test insert error:', error);
                 setMessage(`テスト挿入エラー: ${error.message}`);
             } else {
-                console.log('Test insert success:', data);
                 setMessage(`テスト挿入成功: ID ${data[0]?.id} で挿入されました`);
                 
                 // テストデータを削除
@@ -1062,9 +1051,7 @@ export default function BulkManagement() {
                     updated_at: new Date().toISOString()
                 }
             ];
-            
-            console.log('Manual test data:', manualTestData);
-            
+                        
             // 直接Supabaseに挿入
             const { data, error } = await supabase
                 .from('shelters')
