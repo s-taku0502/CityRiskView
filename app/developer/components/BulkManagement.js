@@ -182,6 +182,14 @@ export default function BulkManagement() {
     const abortControllerRef = useRef(null);
     const [isAborting, setIsAborting] = useState(false);
 
+    // プログレスバー用のstate追加
+    const [progressInfo, setProgressInfo] = useState({
+        current: 0,
+        total: 0,
+        percentage: 0,
+        message: ''
+    });
+
     // 認証状態の監視
     useEffect(() => {
         const getSession = async () => {
@@ -550,7 +558,7 @@ export default function BulkManagement() {
     // Supabaseに直接データを送信（修正版 - 存在するカラムのみ使用）
     const uploadData = async (data) => {
         try {
-            setMessage("サーバーにデータを送信中...");
+            setMessage("データベースに直接アップロード中...");
             
             // 認証チェック
             if (!user) {
@@ -558,7 +566,19 @@ export default function BulkManagement() {
             }
 
             // 現在のセッションを確認
-            const { data: { session } } = await supabase.auth.getSession();
+            const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+            console.log('Current session check:', {
+                hasSession: !!session,
+                hasUser: !!session?.user,
+                userEmail: session?.user?.email,
+                sessionError: sessionError?.message
+            });
+            
+            if (sessionError) {
+                console.error('Session error:', sessionError);
+                throw new Error("セッションエラーが発生しました。再ログインしてください。");
+            }
+            
             if (!session) {
                 throw new Error("セッションが無効です。再ログインしてください。");
             }
@@ -566,56 +586,162 @@ export default function BulkManagement() {
             // AbortControllerを作成
             abortControllerRef.current = new AbortController();
             
-            console.log('Sending data to API:', { recordCount: data.length, user: user.email });
-            
-            // APIエンドポイントにデータを送信（認証情報も含む）
-            const response = await fetch('/api/shelters/bulk', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    // セッション情報をヘッダーに追加（オプション）
-                    'Authorization': `Bearer ${session.access_token}`,
-                },
-                body: JSON.stringify({ data }),
-                signal: abortControllerRef.current.signal,
-                credentials: 'include', // クッキーを含める
+            console.log('Starting direct Supabase upload:', { 
+                recordCount: data.length, 
+                user: user.email
             });
 
-            console.log('API Response status:', response.status);
+            // プログレス初期化
+            setProgressInfo({
+                current: 0,
+                total: data.length,
+                percentage: 0,
+                message: '処理開始...'
+            });
 
-            // 中断チェック
-            if (abortControllerRef.current.signal.aborted) {
-                throw new Error('アップロードが中断されました');
-            }
+            const results = {
+                success: 0,
+                failed: 0,
+                errors: [],
+                warnings: []
+            };
 
-            if (!response.ok) {
-                let errorMessage = `HTTP error! status: ${response.status}`;
-                try {
-                    const errorData = await response.json();
-                    errorMessage = errorData.error || errorMessage;
-                    console.error('API Error:', errorData);
-                } catch (parseError) {
-                    console.error('Error parsing error response:', parseError);
+            const batchSize = 25;
+            const totalBatches = Math.ceil(data.length / batchSize);
+            
+            for (let i = 0; i < data.length; i += batchSize) {
+                const currentBatch = Math.floor(i / batchSize) + 1;
+                
+                // 中断チェック
+                if (abortControllerRef.current.signal.aborted) {
+                    setMessage("アップロードが中断されました。");
+                    results.errors.push('処理が中断されました');
+                    break;
                 }
-                throw new Error(errorMessage);
+
+                const batch = data.slice(i, i + batchSize);
+                
+                // 進捗更新
+                setProgressInfo({
+                    current: i,
+                    total: data.length,
+                    percentage: Math.round((i / data.length) * 100),
+                    message: `バッチ ${currentBatch}/${totalBatches} を処理中...`
+                });
+                setMessage(`進捗: ${Math.round((i / data.length) * 100)}% - バッチ ${currentBatch}/${totalBatches} を処理中...`);
+                
+                // タイムスタンプを追加
+                const batchWithMeta = batch.map(item => ({
+                    ...item,
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                }));
+
+                console.log(`Processing batch ${currentBatch}/${totalBatches} (${batch.length} items)`);
+
+                try {
+                    // 直接Supabaseにinsert
+                    const { data: insertedData, error } = await supabase
+                        .from('shelters')
+                        .insert(batchWithMeta)
+                        .select('id');
+
+                    if (error) {
+                        console.error(`Batch ${currentBatch} error:`, error);
+                        
+                        if (error.code === '23505' || error.message.includes('duplicate')) {
+                            // 重複エラーの場合は個別処理
+                            console.log(`Handling duplicates in batch ${currentBatch} individually...`);
+                            
+                            for (const [itemIndex, item] of batchWithMeta.entries()) {
+                                // 中断チェック
+                                if (abortControllerRef.current.signal.aborted) {
+                                    results.errors.push('処理が中断されました');
+                                    break;
+                                }
+
+                                try {
+                                    const { data: singleData, error: singleError } = await supabase
+                                        .from('shelters')
+                                        .insert(item)
+                                        .select('id');
+
+                                    if (singleError) {
+                                        if (singleError.code === '23505') {
+                                            results.warnings.push(`重複スキップ: ${item.name || `行${i + itemIndex + 1}`}`);
+                                        } else {
+                                            results.errors.push(`エラー: ${item.name || `行${i + itemIndex + 1}`} - ${singleError.message}`);
+                                            results.failed++;
+                                        }
+                                    } else {
+                                        results.success++;
+                                    }
+                                } catch (itemError) {
+                                    results.errors.push(`個別処理エラー: ${item.name || `行${i + itemIndex + 1}`} - ${itemError.message}`);
+                                    results.failed++;
+                                }
+                                
+                                // 個別処理の進捗更新
+                                const itemProgress = i + itemIndex + 1;
+                                if (itemProgress % 5 === 0) { // 5件ごとに更新
+                                    setProgressInfo({
+                                        current: itemProgress,
+                                        total: data.length,
+                                        percentage: Math.round((itemProgress / data.length) * 100),
+                                        message: `個別処理中... (${results.success}件成功, ${results.warnings.length}件重複スキップ)`
+                                    });
+                                }
+                                
+                                // 個別処理間の短い待機
+                                await new Promise(resolve => setTimeout(resolve, 10));
+                            }
+                        } else {
+                            results.errors.push(`バッチ${currentBatch}エラー: ${error.message}`);
+                            results.failed += batch.length;
+                        }
+                    } else {
+                        results.success += insertedData.length;
+                        console.log(`Batch ${currentBatch} completed: ${insertedData.length} records inserted`);
+                    }
+                } catch (batchError) {
+                    console.error(`Batch ${currentBatch} processing error:`, batchError);
+                    results.errors.push(`バッチ${currentBatch}処理エラー: ${batchError.message}`);
+                    results.failed += batch.length;
+                }
+
+                // バッチ間の待機（負荷軽減）
+                if (i < data.length - batchSize) {
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                }
             }
 
-            const result = await response.json();
-            console.log('API Response:', result);
+            // 完了
+            setProgressInfo({
+                current: results.success + results.failed,
+                total: results.success + results.failed + results.warnings.length,
+                percentage: 100,
+                message: 'アップロード完了'
+            });
             
-            setMessage(`サーバー処理完了: ${result.success}件成功, ${result.failed}件失敗`);
-            
+            setMessage(`処理完了: ${results.success}件成功, ${results.failed}件失敗, ${results.warnings.length}件重複スキップ`);
+
             return {
-                success: result.success || 0,
-                failed: result.failed || 0,
-                errors: result.errors || [],
-                warnings: result.warnings || [],
-                message: `処理完了: ${result.success}件成功, ${result.failed}件失敗`
+                success: results.success,
+                failed: results.failed,
+                errors: results.errors,
+                warnings: results.warnings,
+                message: `処理完了: ${results.success}件成功, ${results.failed}件失敗`
             };
 
         } catch (error) {
             if (error.name === 'AbortError' || error.message.includes('中断')) {
                 setMessage("アップロードが中断されました。");
+                setProgressInfo({
+                    current: 0,
+                    total: 0,
+                    percentage: 0,
+                    message: '中断されました'
+                });
                 return {
                     success: 0,
                     failed: 0,
@@ -823,7 +949,7 @@ export default function BulkManagement() {
             
             const testData = {
                 type: "指定避難所",
-                name: "テスト避難所",
+                name: `テスト避難所_${Date.now()}`, // 重複を避けるためタイムスタンプを追加
                 address: "テスト住所123",
                 latitude: 35.6762,
                 longitude: 139.6503,
@@ -833,6 +959,9 @@ export default function BulkManagement() {
                 updated_at: new Date().toISOString()
             };
             
+            console.log('Test data:', testData);
+            
+            // 直接Supabaseに挿入
             const { data, error } = await supabase
                 .from('shelters')
                 .insert(testData)
@@ -861,6 +990,126 @@ export default function BulkManagement() {
         }
     };
 
+    // デバッグ用の関数を追加
+    const checkDatabaseStatus = async () => {
+        try {
+            setMessage("データベースの現在の状況を確認中...");
+            
+            // 現在のレコード数を確認
+            const { data: countData, error: countError } = await supabase
+                .from('shelters')
+                .select('id', { count: 'exact', head: true });
+            
+            if (countError) {
+                console.error('Count error:', countError);
+                setMessage(`カウントエラー: ${countError.message}`);
+                return;
+            }
+            
+            // 最新のレコードを5件取得
+            const { data: latestData, error: latestError } = await supabase
+                .from('shelters')
+                .select('*')
+                .order('created_at', { ascending: false })
+                .limit(5);
+            
+            if (latestError) {
+                console.error('Latest data error:', latestError);
+                setMessage(`データ取得エラー: ${latestError.message}`);
+                return;
+            }
+            
+            const totalCount = countData?.length || 0;
+            console.log('Database status:', {
+                totalCount,
+                latestRecords: latestData
+            });
+            
+            setMessage(
+                `データベース状況:\n` +
+                `総レコード数: ${totalCount}件\n` +
+                `最新レコード: ${latestData?.length || 0}件取得\n` +
+                `最新作成日時: ${latestData?.[0]?.created_at || 'なし'}`
+            );
+            
+        } catch (error) {
+            console.error('Database status check failed:', error);
+            setMessage(`データベース状況確認失敗: ${error.message}`);
+        }
+    };
+
+    // さらにサンプルデータを手動で作成してテストする関数
+    const testManualInsert = async () => {
+        if (!user) {
+            setMessage("ログインが必要です。");
+            return;
+        }
+
+        try {
+            setMessage("手動テストデータでアップロード中...");
+            
+            // 確実に動作するテストデータを作成
+            const manualTestData = [
+                {
+                    type: "指定避難所",
+                    name: `テスト避難所_${Date.now()}`,
+                    address: "東京都港区赤坂1-1-1",
+                    latitude: 35.6762,
+                    longitude: 139.6503,
+                    capacity: 100,
+                    current_people: 0,
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                }
+            ];
+            
+            console.log('Manual test data:', manualTestData);
+            
+            // 直接Supabaseに挿入
+            const { data, error } = await supabase
+                .from('shelters')
+                .insert(manualTestData)
+                .select('id');
+            
+            if (error) {
+                console.error('Manual test error:', error);
+                setMessage(
+                    `手動テスト完了（エラーあり）:\n` +
+                    `成功: 0件\n` +
+                    `失敗: 1件\n` +
+                    `エラー詳細: ${error.message}`
+                );
+            } else {
+                console.log('Manual test success:', data);
+                setMessage(
+                    `手動テスト完了:\n` +
+                    `成功: ${data.length}件\n` +
+                    `失敗: 0件`
+                );
+                
+                // テストデータを削除
+                if (data[0]?.id) {
+                    await supabase
+                        .from('shelters')
+                        .delete()
+                        .eq('id', data[0].id);
+                    setMessage(
+                        `手動テスト完了（テストデータは削除済み）:\n` +
+                        `成功: ${data.length}件\n` +
+                        `失敗: 0件`
+                    );
+                }
+            }
+            
+            // 結果後にDBの状況を確認
+            setTimeout(checkDatabaseStatus, 1000);
+            
+        } catch (error) {
+            console.error('Manual test error:', error);
+            setMessage(`手動テストエラー: ${error.message}`);
+        }
+    };
+
     if (isLoading) {
         return <div>読み込み中...</div>;
     }
@@ -869,11 +1118,11 @@ export default function BulkManagement() {
         <div>
             <h3 className="text-xl font-semibold mb-4">一括インポート</h3>
             
-            {/* デバッグ用ツール（改良版） */}
+            {/* デバッグ用ツール（更新版） */}
             {user && (
                 <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded">
                     <div className="text-sm text-blue-800 mb-2">開発者ツール:</div>
-                    <div className="space-x-2">
+                    <div className="grid grid-cols-3 gap-2">
                         <button
                             onClick={checkTableStructure}
                             className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
@@ -884,8 +1133,29 @@ export default function BulkManagement() {
                             onClick={testInsert}
                             className="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700"
                         >
-                            テスト挿入
+                            テスト挿入（直接）
                         </button>
+                        <button
+                            onClick={checkDatabaseStatus}
+                            className="px-3 py-1 text-sm bg-purple-600 text-white rounded hover:bg-purple-700"
+                        >
+                            DB状況確認
+                        </button>
+                        <button
+                            onClick={testManualInsert}
+                            disabled={isUploading}
+                            className={`px-3 py-1 text-sm rounded ${
+                                isUploading
+                                    ? "bg-gray-400 text-gray-700 cursor-not-allowed"
+                                    : "bg-red-600 text-white hover:bg-red-700"
+                            }`}
+                        >
+                            手動テスト（直接）
+                        </button>
+                    </div>
+                    <div className="text-xs text-blue-600 mt-2">
+                        ※ RLSポリシー追加により、認証されたユーザーは直接データベースに書き込み可能<br/>
+                        ※ APIエンドポイントは不要になりました
                     </div>
                 </div>
             )}
@@ -956,18 +1226,101 @@ export default function BulkManagement() {
                 </div>
             )}
             
-            {/* ファイル選択とヘルプテキスト */}
-            <div className="mb-4">
-                <input
-                    type="file"
-                    accept=".csv"
-                    onChange={handleFileChange}
-                    className="mb-2"
-                    disabled={isUploading || !user}
-                />
-                <div className="text-sm text-gray-600">
-                    ※ エラーがある行はスキップされ、有効なデータのみアップロードされます
-                    {!user && <span className="text-red-600 ml-2">（ログインが必要）</span>}
+            {/* ファイル選択とヘルプテキスト（改良版 - 枠と影付き） */}
+            <div className="mb-6">
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 bg-gray-50 hover:bg-gray-100 transition-colors shadow-sm hover:shadow-md">
+                    <div className="text-center">
+                        {/* アイコンとタイトル */}
+                        <div className="mb-4">
+                            <svg className="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                                <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                            <h4 className="text-lg font-medium text-gray-900 mb-2">CSVファイルを選択</h4>
+                        </div>
+                        
+                        {/* ファイル選択ボタン */}
+                        <div className="mb-4">
+                            <label className={`cursor-pointer inline-flex items-center px-6 py-3 border-2 border-transparent text-base font-medium rounded-md text-white transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 ${
+                                !user 
+                                    ? "bg-gray-400 cursor-not-allowed shadow-none transform-none" 
+                                    : isUploading 
+                                    ? "bg-gray-400 cursor-not-allowed shadow-none transform-none"
+                                    : "bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                            }`}>
+                                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                                </svg>
+                                {csvFile ? "ファイルを変更" : "CSVファイルを選択"}
+                                <input
+                                    type="file"
+                                    accept=".csv"
+                                    onChange={handleFileChange}
+                                    className="sr-only"
+                                    disabled={isUploading || !user}
+                                />
+                            </label>
+                        </div>
+                        
+                        {/* 選択されたファイル情報 */}
+                        {csvFile && (
+                            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md shadow-sm">
+                                <div className="flex items-center justify-center">
+                                    <svg className="w-5 h-5 text-blue-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                    </svg>
+                                    <span className="text-blue-700 font-medium">{csvFile.name}</span>
+                                    <span className="text-blue-500 ml-2">({(csvFile.size / 1024).toFixed(1)} KB)</span>
+                                </div>
+                            </div>
+                        )}
+                        
+                        {/* ヘルプテキスト */}
+                        <div className="text-sm text-gray-600 space-y-2">
+                            {!user ? (
+                                <div className="text-red-600 font-medium">
+                                    <svg className="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.502 0L4.148 18.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                                    </svg>
+                                    ログインが必要です
+                                </div>
+                            ) : (
+                                <>
+                                    <div className="flex items-center justify-center">
+                                        <svg className="w-4 h-4 text-green-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                                        </svg>
+                                        <span>CSV形式のファイルのみ対応</span>
+                                    </div>
+                                    <div className="flex items-center justify-center">
+                                        <svg className="w-4 h-4 text-green-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                        </svg>
+                                        <span>エラー行は自動でスキップされます</span>
+                                    </div>
+                                    <div className="flex items-center justify-center">
+                                        <svg className="w-4 h-4 text-green-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
+                                        </svg>
+                                        <span>自動マッピング機能でカラムを推測</span>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                        
+                        {/* ファイル形式の例 */}
+                        {!csvFile && (
+                            <div className="mt-4 p-3 bg-gray-100 rounded-md shadow-inner">
+                                <div className="text-xs text-gray-600 text-left">
+                                    <div className="font-medium mb-1">期待されるCSV形式例:</div>
+                                    <div className="font-mono bg-white p-2 rounded border text-xs overflow-x-auto shadow-sm">
+                                        施設名,住所,緯度,経度,収容人数<br/>
+                                        〇〇小学校,東京都...,35.1234,139.5678,500<br/>
+                                        △△公民館,神奈川県...,35.4321,139.8765,200
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
 
@@ -1028,14 +1381,14 @@ export default function BulkManagement() {
                                         <td className="border px-2 py-1 text-sm">
                                             {isMapped ? (
                                                 isAuto ? (
-                                                    <span className="text-green-600">🤖 自動</span>
+                                                    <span className="text-green-600">自動</span>
                                                 ) : (
-                                                    <span className="text-blue-600">✓ 手動</span>
+                                                    <span className="text-blue-600">手動</span>
                                                 )
                                             ) : col.required ? (
-                                                <span className="text-red-600">⚠️ 必須</span>
+                                                <span className="text-red-600">必須</span>
                                             ) : (
-                                                <span className="text-gray-500">- 未設定</span>
+                                                <span className="text-gray-500">未設定</span>
                                             )}
                                         </td>
                                     </tr>
@@ -1061,7 +1414,7 @@ export default function BulkManagement() {
                         </span>
                         {getUnmappedRequired().length > 0 && (
                             <span className="ml-4 text-red-500">
-                                ⚠️ 必須項目のマッピングが未設定です
+                                必須項目のマッピングが未設定です
                             </span>
                         )}
                     </div>
@@ -1099,7 +1452,7 @@ export default function BulkManagement() {
                             : "bg-blue-600 text-white hover:bg-blue-700"
                     }`}
                 >
-                    {isUploading ? "サーバーにアップロード中..." : !user ? "ログインが必要" : "アップロード（API経由）"}
+                    {isUploading ? "データベースにアップロード中..." : !user ? "ログインが必要" : "アップロード（直接）"}
                 </button>
 
                 {/* 中断ボタン */}
@@ -1118,23 +1471,40 @@ export default function BulkManagement() {
                 )}
             </div>
 
-            {/* 進行状況バー（オプション） */}
+            {/* プログレスバー（改良版） */}
             {isUploading && (
-                <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded">
-                    <div className="flex items-center justify-between mb-2">
+                <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded">
+                    <div className="flex items-center justify-between mb-3">
                         <span className="text-sm font-medium text-blue-800">
                             アップロード実行中...
                         </span>
-                        <span className="text-xs text-blue-600">
-                            {isAborting ? "中断処理中" : "処理中"}
+                        <span className="text-sm text-blue-600">
+                            {isAborting ? "中断処理中" : `${progressInfo.percentage}%`}
                         </span>
                     </div>
-                    <div className="w-full bg-blue-200 rounded-full h-2">
-                        <div className="bg-blue-600 h-2 rounded-full animate-pulse w-full"></div>
+                    
+                    {/* プログレスバー */}
+                    <div className="w-full bg-blue-200 rounded-full h-3 mb-2">
+                        <div 
+                            className="bg-blue-600 h-3 rounded-full transition-all duration-300 ease-out"
+                            style={{ width: `${progressInfo.percentage}%` }}
+                        ></div>
                     </div>
-                    <div className="text-xs text-blue-600 mt-1">
-                        ※ 大量データの場合、処理に時間がかかることがあります
+                    
+                    {/* 詳細情報 */}
+                    <div className="flex justify-between text-xs text-blue-600">
+                        <span>{progressInfo.message}</span>
+                        <span>
+                            {progressInfo.current} / {progressInfo.total} 件
+                        </span>
                     </div>
+                    
+                    {/* 処理時間の推定 */}
+                    {progressInfo.percentage > 0 && (
+                        <div className="text-xs text-blue-500 mt-1">
+                            ※ 大量データの場合、処理に時間がかかることがあります
+                        </div>
+                    )}
                 </div>
             )}
 
