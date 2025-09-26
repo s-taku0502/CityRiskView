@@ -214,13 +214,18 @@ export default function BulkManagement() {
         return () => subscription.unsubscribe();
     }, []);
 
-    // 開発用簡単ログイン
+    // 開発用簡単ログイン（セキュリティ修正版）
     const handleQuickSignIn = async () => {
         setIsSigningIn(true);
         try {
-            // 開発用のテストアカウント
-            const testEmail = "developer@test.com";
-            const testPassword = "developer123";
+            // 環境変数から開発用アカウント情報を取得
+            const testEmail = process.env.NEXT_PUBLIC_DEV_QUICK_SIGNIN_EMAIL;
+            const testPassword = process.env.NEXT_PUBLIC_DEV_QUICK_SIGNIN_PASSWORD;
+            
+            // 環境変数が設定されていない場合はエラー
+            if (!testEmail || !testPassword) {
+                throw new Error("開発用認証情報が設定されていません。環境変数を確認してください。");
+            }
             
             // まずサインアップを試す（既存の場合はエラーになるが無視）
             await supabase.auth.signUp({
@@ -240,7 +245,6 @@ export default function BulkManagement() {
             
             setMessage("開発用アカウントでログインしました。");
         } catch (error) {
-            console.error('Sign in error:', error);
             setMessage(`ログインエラー: ${error.message}`);
         } finally {
             setIsSigningIn(false);
@@ -555,7 +559,7 @@ export default function BulkManagement() {
         });
     };
 
-    // Supabaseに直接データを送信（修正版 - 存在するカラムのみ使用）
+    // Supabaseに直接データを送信（console.log削除版）
     const uploadData = async (data) => {
         try {
             setMessage("データベースに直接アップロード中...");
@@ -567,15 +571,8 @@ export default function BulkManagement() {
 
             // 現在のセッションを確認
             const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-            console.log('Current session check:', {
-                hasSession: !!session,
-                hasUser: !!session?.user,
-                // userEmail: session?.user?.email,
-                sessionError: sessionError?.message
-            });
             
             if (sessionError) {
-                console.error('Session error:', sessionError);
                 throw new Error("セッションエラーが発生しました。再ログインしてください。");
             }
             
@@ -585,11 +582,6 @@ export default function BulkManagement() {
 
             // AbortControllerを作成
             abortControllerRef.current = new AbortController();
-            
-            console.log('Starting direct Supabase upload:', { 
-                recordCount: data.length, 
-                // user: user.email
-            });
 
             // プログレス初期化
             setProgressInfo({
@@ -697,7 +689,6 @@ export default function BulkManagement() {
                         results.success += insertedData.length;
                     }
                 } catch (batchError) {
-                    console.error(`Batch ${currentBatch} processing error:`, batchError);
                     results.errors.push(`バッチ${currentBatch}処理エラー: ${batchError.message}`);
                     results.failed += batch.length;
                 }
@@ -743,7 +734,6 @@ export default function BulkManagement() {
                     message: 'アップロードが中断されました'
                 };
             }
-            console.error('Upload error:', error);
             throw new Error(`アップロードエラー: ${error.message}`);
         } finally {
             abortControllerRef.current = null;
@@ -894,7 +884,7 @@ export default function BulkManagement() {
         };
     }, []);
 
-    // テーブル構造確認用の関数を追加
+    // テーブル構造確認用の関数（console.log削除版）
     const checkTableStructure = async () => {
         try {
             setMessage("テーブル構造を確認中...");
@@ -906,42 +896,39 @@ export default function BulkManagement() {
                 .limit(1);
             
             if (error) {
-                console.error('Table structure check error:', error);
                 setMessage(`テーブル構造確認エラー: ${error.message}`);
                 return;
             }
             
-            // 取得したデータの構造をログに出力
+            // 取得したデータの構造を確認
             if (data && data.length > 0) {
                 const columns = Object.keys(data[0]);
                 setMessage(`テーブル構造確認完了。利用可能なカラム: ${columns.join(', ')}`);
             } else {
-                // テーブルが空の場合、insertを試してエラーからカラム情報を取得
+                // テーブルが空の場合
                 try {
                     await supabase
                         .from('shelters')
                         .insert({})
                         .select('*');
                 } catch (insertError) {
-                    console.log('Insert error (expected):', insertError);
                     setMessage("テーブルは空です。カラム構造の詳細確認にはデータが必要です。");
                 }
             }
             
         } catch (error) {
-            console.error('Structure check failed:', error);
             setMessage(`構造確認失敗: ${error.message}`);
         }
     };
 
-    // サンプルデータでテストする関数
+    // サンプルデータでテストする関数（console.log削除版）
     const testInsert = async () => {
         try {
             setMessage("テスト挿入を実行中...");
             
             const testData = {
                 type: "指定避難所",
-                name: `テスト避難所_${Date.now()}`, // 重複を避けるためタイムスタンプを追加
+                name: `テスト避難所_${Date.now()}`,
                 address: "テスト住所123",
                 latitude: 35.6762,
                 longitude: 139.6503,
@@ -958,7 +945,6 @@ export default function BulkManagement() {
                 .select('*');
             
             if (error) {
-                console.error('Test insert error:', error);
                 setMessage(`テスト挿入エラー: ${error.message}`);
             } else {
                 setMessage(`テスト挿入成功: ID ${data[0]?.id} で挿入されました`);
@@ -974,12 +960,11 @@ export default function BulkManagement() {
             }
             
         } catch (error) {
-            console.error('Test failed:', error);
             setMessage(`テスト失敗: ${error.message}`);
         }
     };
 
-    // デバッグ用の関数を追加
+    // デバッグ用の関数（console.log削除版）
     const checkDatabaseStatus = async () => {
         try {
             setMessage("データベースの現在の状況を確認中...");
@@ -990,7 +975,6 @@ export default function BulkManagement() {
                 .select('id', { count: 'exact', head: true });
             
             if (countError) {
-                console.error('Count error:', countError);
                 setMessage(`カウントエラー: ${countError.message}`);
                 return;
             }
@@ -1003,16 +987,11 @@ export default function BulkManagement() {
                 .limit(5);
             
             if (latestError) {
-                console.error('Latest data error:', latestError);
                 setMessage(`データ取得エラー: ${latestError.message}`);
                 return;
             }
             
             const totalCount = countData?.length || 0;
-            console.log('Database status:', {
-                totalCount,
-                latestRecords: latestData
-            });
             
             setMessage(
                 `データベース状況:\n` +
@@ -1022,12 +1001,11 @@ export default function BulkManagement() {
             );
             
         } catch (error) {
-            console.error('Database status check failed:', error);
             setMessage(`データベース状況確認失敗: ${error.message}`);
         }
     };
 
-    // さらにサンプルデータを手動で作成してテストする関数
+    // 手動テストデータの関数（console.log削除版）
     const testManualInsert = async () => {
         if (!user) {
             setMessage("ログインが必要です。");
@@ -1051,15 +1029,14 @@ export default function BulkManagement() {
                     updated_at: new Date().toISOString()
                 }
             ];
-                        
+                    
             // 直接Supabaseに挿入
             const { data, error } = await supabase
                 .from('shelters')
                 .insert(manualTestData)
                 .select('id');
-            
+        
             if (error) {
-                console.error('Manual test error:', error);
                 setMessage(
                     `手動テスト完了（エラーあり）:\n` +
                     `成功: 0件\n` +
@@ -1067,7 +1044,6 @@ export default function BulkManagement() {
                     `エラー詳細: ${error.message}`
                 );
             } else {
-                console.log('Manual test success:', data);
                 setMessage(
                     `手動テスト完了:\n` +
                     `成功: ${data.length}件\n` +
@@ -1092,7 +1068,6 @@ export default function BulkManagement() {
             setTimeout(checkDatabaseStatus, 1000);
             
         } catch (error) {
-            console.error('Manual test error:', error);
             setMessage(`手動テストエラー: ${error.message}`);
         }
     };
@@ -1162,7 +1137,7 @@ export default function BulkManagement() {
                             {isSigningIn ? "ログイン中..." : "開発用アカウントでログイン"}
                         </button>
                         <div className="text-sm text-gray-600 mt-1">
-                            ※ developer@test.com / developer123 で自動ログイン
+                            ※ 開発用アカウントで自動ログイン（要環境変数設定）
                         </div>
                     </div>
                     
