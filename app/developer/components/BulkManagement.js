@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { createClient } from '@supabase/supabase-js';
 
 // Supabaseクライアントの設定
@@ -177,6 +177,10 @@ export default function BulkManagement() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [isSigningIn, setIsSigningIn] = useState(false);
+
+    // 中断機能用のref
+    const abortControllerRef = useRef(null);
+    const [isAborting, setIsAborting] = useState(false);
 
     // 認証状態の監視
     useEffect(() => {
@@ -546,120 +550,209 @@ export default function BulkManagement() {
     // Supabaseに直接データを送信（修正版 - 存在するカラムのみ使用）
     const uploadData = async (data) => {
         try {
-            setMessage("データベースに接続中...");
+            setMessage("サーバーにデータを送信中...");
             
             // 認証チェック
             if (!user) {
                 throw new Error("ログインが必要です。");
             }
+
+            // AbortControllerを作成
+            abortControllerRef.current = new AbortController();
             
-            // バッチサイズを設定（Supabaseの制限を考慮）
-            const batchSize = 50;
-            const batches = [];
-            
-            for (let i = 0; i < data.length; i += batchSize) {
-                batches.push(data.slice(i, i + batchSize));
+            // APIエンドポイントにデータを送信（中断対応）
+            const response = await fetch('/api/shelters/bulk', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ data }),
+                signal: abortControllerRef.current.signal, // 中断シグナルを追加
+            });
+
+            // 中断チェック
+            if (abortControllerRef.current.signal.aborted) {
+                throw new Error('アップロードが中断されました');
             }
 
-            let totalSuccess = 0;
-            let totalFailed = 0;
-            const errors = [];
-            const warnings = [];
-
-            // バッチごとに処理
-            for (let i = 0; i < batches.length; i++) {
-                const batch = batches[i];
-                setMessage(`バッチ ${i + 1}/${batches.length} を処理中... (${totalSuccess}/${data.length}件完了)`);
-
-                try {
-                    // 各データにタイムスタンプのみを追加（created_by, updated_byは削除）
-                    const batchWithMeta = batch.map(item => ({
-                        ...item,
-                        created_at: new Date().toISOString(),
-                        updated_at: new Date().toISOString()
-                    }));
-
-                    // まず通常のinsertを試す（upsertは複雑なので避ける）
-                    const { data: insertedData, error } = await supabase
-                        .from('shelters')
-                        .insert(batchWithMeta)
-                        .select('id');
-
-                    if (error) {
-                        console.error('Supabase insert error:', error);
-                        
-                        // RLSエラーの場合
-                        if (error.code === '42501') {
-                            errors.push(`バッチ ${i + 1}: 権限エラー - ${error.message}`);
-                            totalFailed += batch.length;
-                            continue;
-                        }
-                        
-                        // 重複エラーの場合は個別処理
-                        if (error.code === '23505' || error.message.includes('duplicate') || error.message.includes('unique')) {
-                            warnings.push(`バッチ ${i + 1}: 重複データが検出されました - 個別処理中...`);
-                            
-                            // 個別に処理して重複をスキップ
-                            for (const item of batchWithMeta) {
-                                try {
-                                    const { data: singleData, error: singleError } = await supabase
-                                        .from('shelters')
-                                        .insert(item)
-                                        .select('id');
-                                    
-                                    if (singleError) {
-                                        if (singleError.code === '23505' || singleError.message.includes('duplicate')) {
-                                            warnings.push(`重複スキップ: ${item.name || '名称不明'}`);
-                                        } else {
-                                            errors.push(`挿入エラー: ${item.name || '名称不明'} - ${singleError.message}`);
-                                            totalFailed++;
-                                        }
-                                    } else {
-                                        totalSuccess++;
-                                    }
-                                } catch (singleError) {
-                                    errors.push(`個別処理エラー: ${item.name || '名称不明'} - ${singleError.message}`);
-                                    totalFailed++;
-                                }
-                                
-                                // 個別処理時の短い待機
-                                await new Promise(resolve => setTimeout(resolve, 50));
-                            }
-                        } else {
-                            // その他のエラー
-                            errors.push(`バッチ ${i + 1} エラー: ${error.message}`);
-                            totalFailed += batch.length;
-                        }
-                    } else {
-                        // 成功
-                        const insertedCount = insertedData ? insertedData.length : batch.length;
-                        totalSuccess += insertedCount;
-                    }
-                } catch (batchError) {
-                    console.error('Batch processing error:', batchError);
-                    errors.push(`バッチ ${i + 1} 処理エラー: ${batchError.message}`);
-                    totalFailed += batch.length;
-                }
-
-                // 進行状況を更新
-                if (i < batches.length - 1) {
-                    await new Promise(resolve => setTimeout(resolve, 200));
-                }
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
             }
 
+            const result = await response.json();
+            
+            setMessage(`サーバー処理完了: ${result.success}件成功, ${result.failed}件失敗`);
+            
             return {
-                success: totalSuccess,
-                failed: totalFailed,
-                errors: errors,
-                warnings: warnings,
-                message: `処理完了: ${totalSuccess}件成功, ${totalFailed}件失敗`
+                success: result.success || 0,
+                failed: result.failed || 0,
+                errors: result.errors || [],
+                warnings: result.warnings || [],
+                message: `処理完了: ${result.success}件成功, ${result.failed}件失敗`
             };
 
         } catch (error) {
+            if (error.name === 'AbortError' || error.message.includes('中断')) {
+                setMessage("アップロードが中断されました。");
+                return {
+                    success: 0,
+                    failed: 0,
+                    errors: ['アップロードが中断されました'],
+                    warnings: [],
+                    message: 'アップロードが中断されました'
+                };
+            }
             console.error('Upload error:', error);
-            throw new Error(`データベースエラー: ${error.message}`);
+            throw new Error(`アップロードエラー: ${error.message}`);
+        } finally {
+            abortControllerRef.current = null;
         }
     };
+
+    // アップロード中断処理
+    const handleAbort = () => {
+        if (abortControllerRef.current && isUploading) {
+            setIsAborting(true);
+            setMessage("アップロードを中断しています...");
+            
+            // APIリクエストを中断
+            abortControllerRef.current.abort();
+            
+            // 少し待ってから状態をリセット
+            setTimeout(() => {
+                setIsUploading(false);
+                setIsAborting(false);
+                setMessage("アップロードが中断されました。");
+            }, 1000);
+        }
+    };
+
+    // handleUpload関数を中断対応版に修正
+    const handleUpload = async () => {
+        if (!user) {
+            setMessage("ログインしてください。");
+            return;
+        }
+        
+        if (!csvFile) {
+            setMessage("CSVファイルを選択してください。");
+            return;
+        }
+
+        const unmapped = getUnmappedRequired();
+        if (unmapped.length > 0) {
+            setMessage(
+                `必須項目のマッピングが未設定です: ${unmapped
+                    .map((col) => col.label)
+                    .join(", ")}`
+            );
+            return;
+        }
+
+        setIsUploading(true);
+        setIsAborting(false);
+        setMessage("");
+        setUploadResults(null);
+        abortControllerRef.current = null;
+
+        try {
+            // CSVデータを解析
+            setMessage("CSVデータを解析中...");
+            const parseResult = await parseCSVData();
+            
+            // 中断チェック
+            if (isAborting) {
+                setMessage("処理が中断されました。");
+                return;
+            }
+            
+            if (parseResult.errors.length > 0) {
+                setMessage(
+                    `データ解析完了:\n` +
+                    `総行数: ${parseResult.totalRows}行\n` +
+                    `有効: ${parseResult.validRows}行\n` +
+                    `スキップ: ${parseResult.skippedRows}行\n` +
+                    `エラー: ${parseResult.errors.length}件\n\n` +
+                    `有効なデータをサーバーにアップロード中...`
+                );
+                
+                setUploadResults({
+                    errors: parseResult.errors,
+                    warnings: parseResult.warnings
+                });
+            }
+            
+            if (parseResult.validRows === 0) {
+                setMessage("有効なデータがありません。エラーを確認してください。");
+                return;
+            }
+            
+            // 中断チェック
+            if (isAborting) {
+                setMessage("処理が中断されました。");
+                return;
+            }
+            
+            setMessage(`${parseResult.validRows}件の有効なデータをサーバーにアップロード中...`);
+            
+            // APIエンドポイント経由でアップロード
+            const result = await uploadData(parseResult.data);
+            
+            // 中断された場合の処理
+            if (result.message === 'アップロードが中断されました') {
+                setUploadResults(result);
+                return;
+            }
+            
+            const finalResult = {
+                ...result,
+                errors: [...(parseResult.errors || []), ...(result.errors || [])],
+                warnings: [...(parseResult.warnings || []), ...(result.warnings || [])]
+            };
+            
+            setUploadResults(finalResult);
+            setMessage(
+                `アップロード完了:\n` +
+                `成功: ${result.success || 0}件\n` +
+                `失敗: ${result.failed || 0}件\n` +
+                `解析エラー: ${parseResult.errors.length}件\n` +
+                `警告: ${(parseResult.warnings.length || 0) + (result.warnings.length || 0)}件`
+            );
+            
+            // 成功時はフォームをリセット
+            if (result.success > 0) {
+                setCsvFile(null);
+                setCsvPreview([]);
+                setCsvHeaders([]);
+                setColumnMap({});
+                setShowMapping(false);
+                const fileInput = document.querySelector('input[type="file"]');
+                if (fileInput) fileInput.value = '';
+            }
+
+        } catch (error) {
+            if (error.message.includes('中断')) {
+                setMessage("アップロードが中断されました。");
+            } else {
+                console.error('Upload error:', error);
+                setMessage(`エラー: ${error.message}`);
+            }
+        } finally {
+            setIsUploading(false);
+            setIsAborting(false);
+            abortControllerRef.current = null;
+        }
+    };
+
+    // コンポーネントがアンマウントされる時の cleanup
+    useEffect(() => {
+        return () => {
+            if (abortControllerRef.current) {
+                abortControllerRef.current.abort();
+            }
+        };
+    }, []);
 
     // テーブル構造確認用の関数を追加
     const checkTableStructure = async () => {
@@ -744,108 +837,6 @@ export default function BulkManagement() {
         } catch (error) {
             console.error('Test failed:', error);
             setMessage(`テスト失敗: ${error.message}`);
-        }
-    };
-
-    // アップロード処理（認証チェック追加）
-    const handleUpload = async () => {
-        if (!user) {
-            setMessage("ログインしてください。");
-            return;
-        }
-        
-        if (!csvFile) {
-            setMessage("CSVファイルを選択してください。");
-            return;
-        }
-
-        const unmapped = getUnmappedRequired();
-        if (unmapped.length > 0) {
-            setMessage(
-                `必須項目のマッピングが未設定です: ${unmapped
-                    .map((col) => col.label)
-                    .join(", ")}`
-            );
-            return;
-        }
-
-        setIsUploading(true);
-        setMessage("");
-        setUploadResults(null);
-
-        try {
-            // CSVデータを解析
-            setMessage("CSVデータを解析中...");
-            const parseResult = await parseCSVData();
-            
-            if (parseResult.errors.length > 0) {
-                setMessage(
-                    `データ解析完了:\n` +
-                    `総行数: ${parseResult.totalRows}行\n` +
-                    `有効: ${parseResult.validRows}行\n` +
-                    `スキップ: ${parseResult.skippedRows}行\n` +
-                    `エラー: ${parseResult.errors.length}件\n\n` +
-                    `有効なデータをアップロード中...`
-                );
-                
-                setUploadResults({
-                    errors: parseResult.errors,
-                    warnings: parseResult.warnings
-                });
-            }
-            
-            if (parseResult.validRows === 0) {
-                setMessage("有効なデータがありません。エラーを確認してください。");
-                return;
-            }
-            
-            // データベース接続テスト
-            setMessage("データベース接続をテスト中...");
-            const { error: connectionError } = await supabase
-                .from('shelters')
-                .select('id')
-                .limit(1);
-            
-            if (connectionError) {
-                throw new Error(`データベース接続エラー: ${connectionError.message}`);
-            }
-            
-            setMessage(`${parseResult.validRows}件の有効なデータをアップロード中...`);
-            
-            // Supabaseに直接アップロード
-            const result = await uploadData(parseResult.data);
-            
-            const finalResult = {
-                ...result,
-                errors: [...(parseResult.errors || []), ...(result.errors || [])],
-                warnings: [...(parseResult.warnings || []), ...(result.warnings || [])]
-            };
-            
-            setUploadResults(finalResult);
-            setMessage(
-                `アップロード完了:\n` +
-                `成功: ${result.success || 0}件\n` +
-                `失敗: ${result.failed || 0}件\n` +
-                `解析エラー: ${parseResult.errors.length}件\n` +
-                `警告: ${(parseResult.warnings.length || 0) + (result.warnings.length || 0)}件`
-            );
-            
-            // 成功時はフォームをリセット
-            if (result.success > 0) {
-                setCsvFile(null);
-                setCsvPreview([]);
-                setCsvHeaders([]);
-                setColumnMap({});
-                setShowMapping(false);
-                const fileInput = document.querySelector('input[type="file"]');
-                if (fileInput) fileInput.value = '';
-            }
-
-        } catch (error) {
-            console.error('Upload error:', error);
-            setMessage(`エラー: ${error.message}`);
-        } finally {
-            setIsUploading(false);
         }
     };
 
@@ -1076,21 +1067,59 @@ export default function BulkManagement() {
                 </div>
             )}
 
-            <button
-                onClick={handleUpload}
-                disabled={isUploading || !csvFile || getUnmappedRequired().length > 0 || !user}
-                className={`px-4 py-2 rounded ${
-                    isUploading || !csvFile || getUnmappedRequired().length > 0 || !user
-                        ? "bg-gray-400 text-gray-700 cursor-not-allowed"
-                        : "bg-blue-600 text-white hover:bg-blue-700"
-                }`}
-            >
-                {isUploading ? "アップロード中..." : !user ? "ログインが必要" : "アップロード"}
-            </button>
+            {/* アップロードボタンと中断ボタン */}
+            <div className="flex space-x-3 mb-4">
+                <button
+                    onClick={handleUpload}
+                    disabled={isUploading || !csvFile || getUnmappedRequired().length > 0 || !user}
+                    className={`px-4 py-2 rounded ${
+                        isUploading || !csvFile || getUnmappedRequired().length > 0 || !user
+                            ? "bg-gray-400 text-gray-700 cursor-not-allowed"
+                            : "bg-blue-600 text-white hover:bg-blue-700"
+                    }`}
+                >
+                    {isUploading ? "サーバーにアップロード中..." : !user ? "ログインが必要" : "アップロード（API経由）"}
+                </button>
+
+                {/* 中断ボタン */}
+                {isUploading && (
+                    <button
+                        onClick={handleAbort}
+                        disabled={isAborting}
+                        className={`px-4 py-2 rounded ${
+                            isAborting
+                                ? "bg-gray-400 text-gray-700 cursor-not-allowed"
+                                : "bg-red-600 text-white hover:bg-red-700"
+                        }`}
+                    >
+                        {isAborting ? "中断中..." : "インポート中断"}
+                    </button>
+                )}
+            </div>
+
+            {/* 進行状況バー（オプション） */}
+            {isUploading && (
+                <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded">
+                    <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-medium text-blue-800">
+                            アップロード実行中...
+                        </span>
+                        <span className="text-xs text-blue-600">
+                            {isAborting ? "中断処理中" : "処理中"}
+                        </span>
+                    </div>
+                    <div className="w-full bg-blue-200 rounded-full h-2">
+                        <div className="bg-blue-600 h-2 rounded-full animate-pulse w-full"></div>
+                    </div>
+                    <div className="text-xs text-blue-600 mt-1">
+                        ※ 大量データの場合、処理に時間がかかることがあります
+                    </div>
+                </div>
+            )}
 
             {message && (
                 <div className={`mt-4 whitespace-pre-line ${
-                    message.includes("エラー") ? "text-red-500" : 
+                    message.includes("エラー") || message.includes("中断") ? "text-red-500" : 
                     message.includes("完了") || message.includes("成功") ? "text-green-600" : "text-blue-600"
                 }`}>
                     {message}

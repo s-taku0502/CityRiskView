@@ -35,6 +35,12 @@ export async function POST(request) {
 
         const batchSize = 50
         for (let i = 0; i < sheltersData.length; i += batchSize) {
+            // リクエストが中断されているかチェック
+            if (request.signal?.aborted) {
+                results.errors.push('処理が中断されました');
+                break;
+            }
+
             const batch = sheltersData.slice(i, i + batchSize)
             
             // タイムスタンプを追加
@@ -44,36 +50,58 @@ export async function POST(request) {
                 updated_at: new Date().toISOString()
             }))
 
-            const { data, error } = await supabase
-                .from('shelters')
-                .insert(batchWithMeta)
-                .select('id')
+            try {
+                const { data, error } = await supabase
+                    .from('shelters')
+                    .insert(batchWithMeta)
+                    .select('id')
 
-            if (error) {
-                if (error.code === '23505' || error.message.includes('duplicate')) {
-                    // 重複エラーの場合は個別処理
-                    for (const item of batchWithMeta) {
-                        const { error: singleError } = await supabase
-                            .from('shelters')
-                            .insert(item)
-
-                        if (singleError) {
-                            if (singleError.code === '23505') {
-                                results.warnings.push(`重複スキップ: ${item.name}`)
-                            } else {
-                                results.errors.push(`エラー: ${item.name} - ${singleError.message}`)
-                                results.failed++
+                if (error) {
+                    if (error.code === '23505' || error.message.includes('duplicate')) {
+                        // 重複エラーの場合は個別処理
+                        for (const item of batchWithMeta) {
+                            // 中断チェック
+                            if (request.signal?.aborted) {
+                                results.errors.push('処理が中断されました');
+                                return NextResponse.json(results);
                             }
-                        } else {
-                            results.success++
+
+                            const { error: singleError } = await supabase
+                                .from('shelters')
+                                .insert(item)
+
+                            if (singleError) {
+                                if (singleError.code === '23505') {
+                                    results.warnings.push(`重複スキップ: ${item.name}`)
+                                } else {
+                                    results.errors.push(`エラー: ${item.name} - ${singleError.message}`)
+                                    results.failed++
+                                }
+                            } else {
+                                results.success++
+                            }
                         }
+                    } else {
+                        results.errors.push(`バッチエラー: ${error.message}`)
+                        results.failed += batch.length
                     }
                 } else {
-                    results.errors.push(`バッチエラー: ${error.message}`)
-                    results.failed += batch.length
+                    results.success += data.length
                 }
-            } else {
-                results.success += data.length
+            } catch (batchError) {
+                results.errors.push(`バッチ処理エラー: ${batchError.message}`)
+                results.failed += batch.length
+            }
+
+            // 処理間の短い待機（中断チェック付き）
+            if (i < sheltersData.length - batchSize) {
+                await new Promise(resolve => {
+                    const timeout = setTimeout(resolve, 100);
+                    if (request.signal?.aborted) {
+                        clearTimeout(timeout);
+                        resolve();
+                    }
+                });
             }
         }
 
