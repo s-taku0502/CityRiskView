@@ -557,18 +557,31 @@ export default function BulkManagement() {
                 throw new Error("ログインが必要です。");
             }
 
+            // 現在のセッションを確認
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) {
+                throw new Error("セッションが無効です。再ログインしてください。");
+            }
+
             // AbortControllerを作成
             abortControllerRef.current = new AbortController();
             
-            // APIエンドポイントにデータを送信（中断対応）
+            console.log('Sending data to API:', { recordCount: data.length, user: user.email });
+            
+            // APIエンドポイントにデータを送信（認証情報も含む）
             const response = await fetch('/api/shelters/bulk', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    // セッション情報をヘッダーに追加（オプション）
+                    'Authorization': `Bearer ${session.access_token}`,
                 },
                 body: JSON.stringify({ data }),
-                signal: abortControllerRef.current.signal, // 中断シグナルを追加
+                signal: abortControllerRef.current.signal,
+                credentials: 'include', // クッキーを含める
             });
+
+            console.log('API Response status:', response.status);
 
             // 中断チェック
             if (abortControllerRef.current.signal.aborted) {
@@ -576,11 +589,19 @@ export default function BulkManagement() {
             }
 
             if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+                let errorMessage = `HTTP error! status: ${response.status}`;
+                try {
+                    const errorData = await response.json();
+                    errorMessage = errorData.error || errorMessage;
+                    console.error('API Error:', errorData);
+                } catch (parseError) {
+                    console.error('Error parsing error response:', parseError);
+                }
+                throw new Error(errorMessage);
             }
 
             const result = await response.json();
+            console.log('API Response:', result);
             
             setMessage(`サーバー処理完了: ${result.success}件成功, ${result.failed}件失敗`);
             
