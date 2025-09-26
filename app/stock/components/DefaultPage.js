@@ -3,8 +3,9 @@ import FilterPanel from '@/components/FilterPanel';
 import { extractPrefectureAndCity } from '@/app/utils/address';
 import { prefectures } from '@/app/utils/prefectures';
 import { fetchCitiesByPref } from '@/app/utils/cityApi';
+import { getPrefectureAddressPrefix } from '@/app/utils/prefectureMap';
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+// import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import baseStockData from '@/data/ShelterStocks.json';
 
@@ -17,11 +18,12 @@ export default function StockViewPage() {
   const [prefectureOptions] = useState(prefectures);
   const [cityOptions, setCityOptions] = useState([]);
 
-  const router = useRouter();
+  // const router = useRouter();
 
+  // 都道府県変更時にSupabaseクエリで避難所を取得
   useEffect(() => {
-    fetchShelters();
-  }, []);
+    fetchSheltersByPrefecture();
+  }, [prefecture]);
 
   useEffect(() => {
     if (prefecture) {
@@ -31,22 +33,44 @@ export default function StockViewPage() {
     }
   }, [prefecture]);
 
-  const fetchShelters = async () => {
+  // SQLクエリ: SELECT * FROM shelters WHERE LEFT(address, 3) = '選択された都道府県の左3文字'
+  const fetchSheltersByPrefecture = async () => {
     try {
-      const { data, error } = await supabase
-        .from('shelters')
-        .select('*');
+      let query = supabase.from('shelters').select('*');
+      
+      if (prefecture) {
+        // 選択された都道府県に対応する住所の左3文字を取得
+        const addressPrefix = getPrefectureAddressPrefix(prefecture);
+        if (addressPrefix) {
+          // PostgreSQLのLEFT関数を使用して住所の左3文字で絞り込み
+          // SQL: SELECT * FROM shelters WHERE LEFT(address, 3) = 'addressPrefix'
+          query = query.filter('address', 'ilike', `${addressPrefix}%`);
+        } else {
+          setShelters([]);
+          return;
+        }
+      }
+      
+      const { data, error } = await query;
       if (error) throw error;
+      
       const sheltersWithKana = data.map(shelter => {
-        const { prefecture, city } = extractPrefectureAndCity(shelter.address || "");
+        const { prefecture: extractedPref, city } = extractPrefectureAndCity(shelter.address || "");
         return {
           ...shelter,
           name_kana: [shelter.name, shelter.name.replace(/市立|県立|小学校|中学校|高等学校|公民館/g, '')],
-          prefecture,
+          prefecture: extractedPref,
           city,
         };
       });
+      
       setShelters(sheltersWithKana);
+      
+      if (prefecture) {
+        const addressPrefix = getPrefectureAddressPrefix(prefecture);
+        console.log(`都道府県: ${prefecture}`);
+      }
+      
     } catch (error) {
       console.error('Error fetching shelters:', error);
       setShelters([]);
@@ -59,7 +83,7 @@ export default function StockViewPage() {
     setCityOptions(cities);
   };
 
-  // 絞り込みロジック
+  // 追加の絞り込みロジック（キーワード、施設名、市区町村）
   const filteredShelters = shelters.filter((shelter) => {
     const matchesKeyword =
       !keyword ||
@@ -69,9 +93,10 @@ export default function StockViewPage() {
     const matchesFacilityName =
       !facilityName ||
       shelter.name.toLowerCase().includes(facilityName.toLowerCase());
-    const matchesPrefecture = !prefecture || shelter.prefecture === prefecture;
+    
     const matchesCity = !city || shelter.city.startsWith(city);
-    return matchesKeyword && matchesFacilityName && matchesPrefecture && matchesCity;
+    
+    return matchesKeyword && matchesFacilityName && matchesCity;
   });
 
   return (
@@ -91,11 +116,25 @@ export default function StockViewPage() {
           cityOptions={cityOptions}
         />
       </div>
+      
+      {/* 表示件数を表示 */}
+      {/* <div className="text-sm text-gray-600">
+        表示件数: {filteredShelters.length}件
+        {prefecture && (
+          <span className="ml-2 text-blue-600">
+            ({prefecture} - 住所が「{getPrefectureAddressPrefix(prefecture)}」で始まる避難所)
+          </span>
+        )}
+      </div> */}
+
       {filteredShelters.map((shelter) => {
         const stock = baseStockData[shelter.id] || [];
         return (
           <div key={shelter.id} className="border rounded p-4 shadow mt-6">
             <h3 className="text-xl font-semibold mb-2">{shelter.name}</h3>
+            <p className="text-sm text-gray-600 mb-2">
+              住所: {shelter.address} 
+            </p>
             {Object.entries(
               stock.reduce((acc, item) => {
                 if (!acc[item.category]) acc[item.category] = [];
