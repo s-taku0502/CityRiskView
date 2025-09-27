@@ -9,6 +9,23 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
+// 開発者アクセス権限のチェック関数（環境変数ベース）
+const checkDeveloperAccess = (userEmail) => {
+    // 本番環境では開発者機能を完全に無効化
+    if (process.env.NODE_ENV === 'production') {
+        return false;
+    }
+    
+    // 開発環境でも環境変数で許可されたメールアドレスのみアクセス可能
+    const allowedEmails = process.env.NEXT_PUBLIC_DEVELOPER_EMAILS;
+    if (!allowedEmails || !userEmail) {
+        return false;
+    }
+    
+    const emailList = allowedEmails.split(',').map(email => email.trim().toLowerCase());
+    return emailList.includes(userEmail.toLowerCase());
+};
+
 // dbColumnsの内容を反映（必須・推奨・補助すべて）
 const DB_COLUMNS = [
     // 必須
@@ -162,6 +179,7 @@ const createAutoMapping = (headers) => {
 };
 
 export default function BulkManagement() {
+    // ★ すべてのHooksを条件分岐より前に宣言
     const [csvFile, setCsvFile] = useState(null);
     const [csvPreview, setCsvPreview] = useState([]);
     const [csvHeaders, setCsvHeaders] = useState([]);
@@ -177,6 +195,7 @@ export default function BulkManagement() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [isSigningIn, setIsSigningIn] = useState(false);
+    const [hasDeveloperAccess, setHasDeveloperAccess] = useState(false);
 
     // 中断機能用のref
     const abortControllerRef = useRef(null);
@@ -194,7 +213,21 @@ export default function BulkManagement() {
     useEffect(() => {
         const getSession = async () => {
             const { data: { session } } = await supabase.auth.getSession();
-            setUser(session?.user || null);
+            const currentUser = session?.user || null;
+            setUser(currentUser);
+            
+            // 開発者アクセス権限をチェック
+            if (currentUser) {
+                const hasAccess = checkDeveloperAccess(currentUser.email);
+                setHasDeveloperAccess(hasAccess);
+                
+                if (!hasAccess) {
+                    setMessage("このページにアクセスする権限がありません。開発者権限が必要です。");
+                }
+            } else {
+                setHasDeveloperAccess(false);
+            }
+            
             setIsLoading(false);
         };
 
@@ -202,10 +235,26 @@ export default function BulkManagement() {
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
             async (event, session) => {
-                setUser(session?.user || null);
-                if (event === 'SIGNED_IN') {
-                    setMessage("ログインしました。CSVアップロードが利用可能です。");
-                } else if (event === 'SIGNED_OUT') {
+                const currentUser = session?.user || null;
+                setUser(currentUser);
+                
+                // 開発者アクセス権限をチェック
+                if (currentUser) {
+                    const hasAccess = checkDeveloperAccess(currentUser.email);
+                    setHasDeveloperAccess(hasAccess);
+                    
+                    if (event === 'SIGNED_IN') {
+                        if (hasAccess) {
+                            setMessage("ログインしました。CSVアップロードが利用可能です。");
+                        } else {
+                            setMessage("ログインしましたが、このページにアクセスする権限がありません。");
+                        }
+                    }
+                } else {
+                    setHasDeveloperAccess(false);
+                }
+                
+                if (event === 'SIGNED_OUT') {
                     setMessage("ログアウトしました。");
                 }
             }
@@ -214,38 +263,19 @@ export default function BulkManagement() {
         return () => subscription.unsubscribe();
     }, []);
 
-    // 開発用簡単ログイン
-    const handleQuickSignIn = async () => {
-        setIsSigningIn(true);
-        try {
-            // 開発用のテストアカウント
-            const testEmail = "developer@test.com";
-            const testPassword = "developer123";
-            
-            // まずサインアップを試す（既存の場合はエラーになるが無視）
-            await supabase.auth.signUp({
-                email: testEmail,
-                password: testPassword,
-            });
-            
-            // サインイン
-            const { error } = await supabase.auth.signInWithPassword({
-                email: testEmail,
-                password: testPassword,
-            });
-            
-            if (error) {
-                throw error;
+    // コンポーネントがアンマウントされる時の cleanup
+    useEffect(() => {
+        return () => {
+            if (abortControllerRef.current) {
+                abortControllerRef.current.abort();
             }
-            
-            setMessage("開発用アカウントでログインしました。");
-        } catch (error) {
-            console.error('Sign in error:', error);
-            setMessage(`ログインエラー: ${error.message}`);
-        } finally {
-            setIsSigningIn(false);
-        }
-    };
+        };
+    }, []);
+
+    // 権限チェック：開発者権限がない場合は機能を制限
+    if (isLoading) {
+        return <div>読み込み中...</div>;
+    }
 
     // 手動ログイン
     const handleSignIn = async (e) => {
@@ -266,7 +296,43 @@ export default function BulkManagement() {
             setEmail("");
             setPassword("");
         } catch (error) {
-            console.error('Sign in error:', error);
+            setMessage(`ログインエラー: ${error.message}`);
+        } finally {
+            setIsSigningIn(false);
+        }
+    };
+
+    // 開発用簡単ログイン
+    const handleQuickSignIn = async () => {
+        setIsSigningIn(true);
+        try {
+            // 環境変数から開発用アカウント情報を取得
+            const testEmail = process.env.NEXT_PUBLIC_DEV_QUICK_SIGNIN_EMAIL;
+            const testPassword = process.env.NEXT_PUBLIC_DEV_QUICK_SIGNIN_PASSWORD;
+            
+            // 環境変数が設定されていない場合はエラー
+            if (!testEmail || !testPassword) {
+                throw new Error("開発用認証情報が設定されていません。環境変数を確認してください。");
+            }
+            
+            // まずサインアップを試す（既存の場合はエラーになるが無視）
+            await supabase.auth.signUp({
+                email: testEmail,
+                password: testPassword,
+            });
+            
+            // サインイン
+            const { error } = await supabase.auth.signInWithPassword({
+                email: testEmail,
+                password: testPassword,
+            });
+            
+            if (error) {
+                throw error;
+            }
+            
+            setMessage("開発用アカウントでログインしました。");
+        } catch (error) {
             setMessage(`ログインエラー: ${error.message}`);
         } finally {
             setIsSigningIn(false);
@@ -281,7 +347,7 @@ export default function BulkManagement() {
         }
     };
 
-    // 改良されたCSVパース関数
+    // 既存のCSV関連関数は省略
     const parseCSVLine = (line) => {
         const result = [];
         let current = '';
@@ -294,15 +360,12 @@ export default function BulkManagement() {
             
             if (char === '"') {
                 if (inQuotes && nextChar === '"') {
-                    // エスケープされたクォート
                     current += '"';
                     i += 2;
                     continue;
                 } else if (!inQuotes) {
-                    // クォート開始
                     inQuotes = true;
                 } else {
-                    // クォート終了
                     inQuotes = false;
                 }
             } else if (char === ',' && !inQuotes) {
@@ -317,7 +380,6 @@ export default function BulkManagement() {
         return result;
     };
 
-    // ファイル選択時（文字エンコーディング対応）
     const handleFileChange = (e) => {
         const file = e.target.files[0];
         setCsvFile(file);
@@ -340,15 +402,13 @@ export default function BulkManagement() {
                     }
 
                     const rows = lines.map(line => parseCSVLine(line));
-                    setCsvPreview(rows.slice(0, 6)); // ヘッダー+5行プレビュー
+                    setCsvPreview(rows.slice(0, 6));
                     setCsvHeaders(rows[0]);
                     
-                    // 自動マッピングを実行
                     const autoMapping = createAutoMapping(rows[0]);
                     setColumnMap(autoMapping);
                     setShowMapping(true);
 
-                    // マッピング結果を表示
                     const mappedCount = Object.values(autoMapping).filter(value => value !== "").length;
                     const autoMappedItems = Object.entries(autoMapping)
                         .filter(([key, value]) => value !== "")
@@ -362,7 +422,6 @@ export default function BulkManagement() {
                         `マッピング結果:\n${autoMappedItems.join('\n')}`
                     );
                 } catch (error) {
-                    console.error('File parsing error:', error);
                     setMessage(`ファイル解析エラー: ${error.message}`);
                 }
             };
@@ -371,7 +430,6 @@ export default function BulkManagement() {
                 setMessage("ファイル読み込みエラー。ファイル形式やエンコーディングを確認してください。");
             };
             
-            // 文字エンコーディングを自動検出
             reader.readAsText(file, 'UTF-8');
         } else {
             setCsvPreview([]);
@@ -381,7 +439,7 @@ export default function BulkManagement() {
         }
     };
 
-    // マッピング変更
+    // マッピング処理
     const handleMapChange = (systemKey, csvHeader) => {
         setColumnMap((prev) => ({
             ...prev,
@@ -396,7 +454,7 @@ export default function BulkManagement() {
         );
     };
 
-    // 自動マッピングされた項目かどうかを判定
+    // 自動マッピングされた項目かどうかの判定
     const isAutoMapped = (key) => {
         const value = columnMap[key];
         if (!value || value === "") return false;
@@ -410,7 +468,7 @@ export default function BulkManagement() {
         );
     };
 
-    // CSVデータを解析してオブジェクト配列に変換（改良版）
+    // CSVデータを解析してオブジェクト配列に変換
     const parseCSVData = () => {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
@@ -555,7 +613,7 @@ export default function BulkManagement() {
         });
     };
 
-    // Supabaseに直接データを送信（修正版 - 存在するカラムのみ使用）
+    // Supabaseに直接データを送信（console.log削除版）
     const uploadData = async (data) => {
         try {
             setMessage("データベースに直接アップロード中...");
@@ -567,15 +625,8 @@ export default function BulkManagement() {
 
             // 現在のセッションを確認
             const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-            console.log('Current session check:', {
-                hasSession: !!session,
-                hasUser: !!session?.user,
-                userEmail: session?.user?.email,
-                sessionError: sessionError?.message
-            });
             
             if (sessionError) {
-                console.error('Session error:', sessionError);
                 throw new Error("セッションエラーが発生しました。再ログインしてください。");
             }
             
@@ -585,11 +636,6 @@ export default function BulkManagement() {
 
             // AbortControllerを作成
             abortControllerRef.current = new AbortController();
-            
-            console.log('Starting direct Supabase upload:', { 
-                recordCount: data.length, 
-                user: user.email
-            });
 
             // プログレス初期化
             setProgressInfo({
@@ -637,8 +683,6 @@ export default function BulkManagement() {
                     updated_at: new Date().toISOString()
                 }));
 
-                console.log(`Processing batch ${currentBatch}/${totalBatches} (${batch.length} items)`);
-
                 try {
                     // 直接Supabaseにinsert
                     const { data: insertedData, error } = await supabase
@@ -646,13 +690,9 @@ export default function BulkManagement() {
                         .insert(batchWithMeta)
                         .select('id');
 
-                    if (error) {
-                        console.error(`Batch ${currentBatch} error:`, error);
-                        
+                    if (error) {                        
                         if (error.code === '23505' || error.message.includes('duplicate')) {
-                            // 重複エラーの場合は個別処理
-                            console.log(`Handling duplicates in batch ${currentBatch} individually...`);
-                            
+                            // 重複エラーの場合は個別処理                            
                             for (const [itemIndex, item] of batchWithMeta.entries()) {
                                 // 中断チェック
                                 if (abortControllerRef.current.signal.aborted) {
@@ -701,10 +741,8 @@ export default function BulkManagement() {
                         }
                     } else {
                         results.success += insertedData.length;
-                        console.log(`Batch ${currentBatch} completed: ${insertedData.length} records inserted`);
                     }
                 } catch (batchError) {
-                    console.error(`Batch ${currentBatch} processing error:`, batchError);
                     results.errors.push(`バッチ${currentBatch}処理エラー: ${batchError.message}`);
                     results.failed += batch.length;
                 }
@@ -750,7 +788,6 @@ export default function BulkManagement() {
                     message: 'アップロードが中断されました'
                 };
             }
-            console.error('Upload error:', error);
             throw new Error(`アップロードエラー: ${error.message}`);
         } finally {
             abortControllerRef.current = null;
@@ -775,13 +812,8 @@ export default function BulkManagement() {
         }
     };
 
-    // handleUpload関数を中断対応版に修正
+    // handleUpload関数も簡素化
     const handleUpload = async () => {
-        if (!user) {
-            setMessage("ログインしてください。");
-            return;
-        }
-        
         if (!csvFile) {
             setMessage("CSVファイルを選択してください。");
             return;
@@ -843,7 +875,7 @@ export default function BulkManagement() {
             
             setMessage(`${parseResult.validRows}件の有効なデータをサーバーにアップロード中...`);
             
-            // APIエンドポイント経由でアップロード
+            // 直接Supabaseにアップロード
             const result = await uploadData(parseResult.data);
             
             // 中断された場合の処理
@@ -882,7 +914,6 @@ export default function BulkManagement() {
             if (error.message.includes('中断')) {
                 setMessage("アップロードが中断されました。");
             } else {
-                console.error('Upload error:', error);
                 setMessage(`エラー: ${error.message}`);
             }
         } finally {
@@ -892,16 +923,7 @@ export default function BulkManagement() {
         }
     };
 
-    // コンポーネントがアンマウントされる時の cleanup
-    useEffect(() => {
-        return () => {
-            if (abortControllerRef.current) {
-                abortControllerRef.current.abort();
-            }
-        };
-    }, []);
-
-    // テーブル構造確認用の関数を追加
+    // テーブル構造確認用の関数
     const checkTableStructure = async () => {
         try {
             setMessage("テーブル構造を確認中...");
@@ -913,43 +935,39 @@ export default function BulkManagement() {
                 .limit(1);
             
             if (error) {
-                console.error('Table structure check error:', error);
                 setMessage(`テーブル構造確認エラー: ${error.message}`);
                 return;
             }
             
-            // 取得したデータの構造をログに出力
+            // 取得したデータの構造を確認
             if (data && data.length > 0) {
                 const columns = Object.keys(data[0]);
-                console.log('Available columns:', columns);
                 setMessage(`テーブル構造確認完了。利用可能なカラム: ${columns.join(', ')}`);
             } else {
-                // テーブルが空の場合、insertを試してエラーからカラム情報を取得
+                // テーブルが空の場合
                 try {
                     await supabase
                         .from('shelters')
                         .insert({})
                         .select('*');
                 } catch (insertError) {
-                    console.log('Insert error (expected):', insertError);
                     setMessage("テーブルは空です。カラム構造の詳細確認にはデータが必要です。");
                 }
             }
             
         } catch (error) {
-            console.error('Structure check failed:', error);
             setMessage(`構造確認失敗: ${error.message}`);
         }
     };
 
-    // サンプルデータでテストする関数
+    // サンプルデータでテストする関数（console.log削除版）
     const testInsert = async () => {
         try {
             setMessage("テスト挿入を実行中...");
             
             const testData = {
                 type: "指定避難所",
-                name: `テスト避難所_${Date.now()}`, // 重複を避けるためタイムスタンプを追加
+                name: `テスト避難所_${Date.now()}`,
                 address: "テスト住所123",
                 latitude: 35.6762,
                 longitude: 139.6503,
@@ -958,9 +976,7 @@ export default function BulkManagement() {
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString()
             };
-            
-            console.log('Test data:', testData);
-            
+
             // 直接Supabaseに挿入
             const { data, error } = await supabase
                 .from('shelters')
@@ -968,10 +984,8 @@ export default function BulkManagement() {
                 .select('*');
             
             if (error) {
-                console.error('Test insert error:', error);
                 setMessage(`テスト挿入エラー: ${error.message}`);
             } else {
-                console.log('Test insert success:', data);
                 setMessage(`テスト挿入成功: ID ${data[0]?.id} で挿入されました`);
                 
                 // テストデータを削除
@@ -985,12 +999,11 @@ export default function BulkManagement() {
             }
             
         } catch (error) {
-            console.error('Test failed:', error);
             setMessage(`テスト失敗: ${error.message}`);
         }
     };
 
-    // デバッグ用の関数を追加
+    // デバッグ用の関数（console.log削除版）
     const checkDatabaseStatus = async () => {
         try {
             setMessage("データベースの現在の状況を確認中...");
@@ -1001,7 +1014,6 @@ export default function BulkManagement() {
                 .select('id', { count: 'exact', head: true });
             
             if (countError) {
-                console.error('Count error:', countError);
                 setMessage(`カウントエラー: ${countError.message}`);
                 return;
             }
@@ -1014,16 +1026,11 @@ export default function BulkManagement() {
                 .limit(5);
             
             if (latestError) {
-                console.error('Latest data error:', latestError);
                 setMessage(`データ取得エラー: ${latestError.message}`);
                 return;
             }
             
             const totalCount = countData?.length || 0;
-            console.log('Database status:', {
-                totalCount,
-                latestRecords: latestData
-            });
             
             setMessage(
                 `データベース状況:\n` +
@@ -1033,18 +1040,12 @@ export default function BulkManagement() {
             );
             
         } catch (error) {
-            console.error('Database status check failed:', error);
             setMessage(`データベース状況確認失敗: ${error.message}`);
         }
     };
 
-    // さらにサンプルデータを手動で作成してテストする関数
+    // 手動テストデータの関数（console.log削除版）
     const testManualInsert = async () => {
-        if (!user) {
-            setMessage("ログインが必要です。");
-            return;
-        }
-
         try {
             setMessage("手動テストデータでアップロード中...");
             
@@ -1062,17 +1063,14 @@ export default function BulkManagement() {
                     updated_at: new Date().toISOString()
                 }
             ];
-            
-            console.log('Manual test data:', manualTestData);
-            
+                
             // 直接Supabaseに挿入
             const { data, error } = await supabase
                 .from('shelters')
                 .insert(manualTestData)
                 .select('id');
-            
+    
             if (error) {
-                console.error('Manual test error:', error);
                 setMessage(
                     `手動テスト完了（エラーあり）:\n` +
                     `成功: 0件\n` +
@@ -1080,7 +1078,6 @@ export default function BulkManagement() {
                     `エラー詳細: ${error.message}`
                 );
             } else {
-                console.log('Manual test success:', data);
                 setMessage(
                     `手動テスト完了:\n` +
                     `成功: ${data.length}件\n` +
@@ -1105,21 +1102,33 @@ export default function BulkManagement() {
             setTimeout(checkDatabaseStatus, 1000);
             
         } catch (error) {
-            console.error('Manual test error:', error);
             setMessage(`手動テストエラー: ${error.message}`);
         }
     };
 
-    if (isLoading) {
-        return <div>読み込み中...</div>;
-    }
-
+    // ★ メインのreturn（JSX）
     return (
         <div>
             <h3 className="text-xl font-semibold mb-4">一括インポート</h3>
             
-            {/* デバッグ用ツール（更新版） */}
-            {user && (
+            {/* 開発者権限の表示 */}
+            <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded">
+                <div className="flex justify-between items-center">
+                    <div>
+                        <span className="text-green-800 font-medium">開発者モード: </span>
+                        <span className="text-green-700">{user?.email}</span>
+                    </div>
+                    <button
+                        onClick={handleSignOut}
+                        className="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700"
+                    >
+                        ログアウト
+                    </button>
+                </div>
+            </div>
+            
+            {/* デバッグ用ツール（開発環境のみ） */}
+            {process.env.NODE_ENV === 'development' && (
                 <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded">
                     <div className="text-sm text-blue-800 mb-2">開発者ツール:</div>
                     <div className="grid grid-cols-3 gap-2">
@@ -1154,78 +1163,12 @@ export default function BulkManagement() {
                         </button>
                     </div>
                     <div className="text-xs text-blue-600 mt-2">
-                        ※ RLSポリシー追加により、認証されたユーザーは直接データベースに書き込み可能<br/>
-                        ※ APIエンドポイントは不要になりました
+                        ※ 開発環境でのみ表示されるデバッグツール<br/>
+                        ※ 本番環境では自動的に非表示になります
                     </div>
                 </div>
             )}
 
-            {/* 認証セクション */}
-            {!user ? (
-                <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded">
-                    <h4 className="font-semibold mb-3 text-yellow-800">ログインが必要です</h4>
-                    
-                    {/* 開発用クイックログイン */}
-                    <div className="mb-4">
-                        <button
-                            onClick={handleQuickSignIn}
-                            disabled={isSigningIn}
-                            className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
-                        >
-                            {isSigningIn ? "ログイン中..." : "開発用アカウントでログイン"}
-                        </button>
-                        <div className="text-sm text-gray-600 mt-1">
-                            ※ developer@test.com / developer123 で自動ログイン
-                        </div>
-                    </div>
-                    
-                    {/* 手動ログイン */}
-                    <div className="border-t pt-4">
-                        <div className="text-sm text-gray-700 mb-2">または手動でログイン:</div>
-                        <form onSubmit={handleSignIn} className="space-y-2">
-                            <input
-                                type="email"
-                                placeholder="メールアドレス"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                className="w-full px-3 py-2 border rounded"
-                                required
-                            />
-                            <input
-                                type="password"
-                                placeholder="パスワード"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                className="w-full px-3 py-2 border rounded"
-                                required
-                            />
-                            <button
-                                type="submit"
-                                disabled={isSigningIn}
-                                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
-                            >
-                                {isSigningIn ? "ログイン中..." : "ログイン"}
-                            </button>
-                        </form>
-                    </div>
-                </div>
-            ) : (
-                <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded">
-                    <div className="flex justify-between items-center">
-                        <div>
-                            <span className="text-green-800 font-medium">ログイン済み: </span>
-                            <span className="text-green-700">{user.email}</span>
-                        </div>
-                        <button
-                            onClick={handleSignOut}
-                            className="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700"
-                        >
-                            ログアウト
-                        </button>
-                    </div>
-                </div>
-            )}
-            
             {/* ファイル選択とヘルプテキスト（改良版 - 枠と影付き） */}
             <div className="mb-6">
                 <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 bg-gray-50 hover:bg-gray-100 transition-colors shadow-sm hover:shadow-md">
