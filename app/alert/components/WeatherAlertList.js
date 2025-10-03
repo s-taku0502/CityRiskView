@@ -26,6 +26,11 @@ const WeatherAlertList = () => {
       setLastUpdated(data.lastUpdated);
       setFeedUpdated(data.feedUpdated);
       
+      // XMLリンクのサンプルを1件だけコンソールに表示
+      if (data.alerts && data.alerts.length > 0 && data.alerts[0].xmlLink) {
+        console.log('XMLリンクサンプル:', data.alerts[0].xmlLink);
+      }
+      
     } catch (error) {
       console.error('気象庁防災情報の取得に失敗:', error);
       setError(error.message);
@@ -70,21 +75,6 @@ const WeatherAlertList = () => {
       default: return '情報';
     }
   };
-
-  // カテゴリーのアイコン
-//   const getCategoryIcon = (category) => {
-//     switch (category) {
-//       case '特別警報': return '🚨';
-//       case '警報': return '⚠️';
-//       case '注意報': return '⚡';
-//       case '竜巻注意情報': return '🌪';
-//       case '台風情報': return '🌀';
-//       case '地震情報': return '🏠';
-//       case '津波情報': return '🌊';
-//       case '気象情報': return '☁️';
-//       default: return '📢';
-//     }
-//   };
 
   // 時間の相対表示
   const getRelativeTime = (dateString) => {
@@ -162,7 +152,6 @@ const WeatherAlertList = () => {
             >
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center flex-1">
-                  {/* <span className="text-2xl mr-3">{getCategoryIcon(alert.category)}</span> */}
                   <div className="flex-1">
                     <h3 className="text-lg font-semibold mb-2">{alert.title}</h3>
                     <div className="flex items-center space-x-4 text-sm mb-2">
@@ -189,19 +178,6 @@ const WeatherAlertList = () => {
                   <span>座標: {alert.coordinates[1].toFixed(2)}, {alert.coordinates[0].toFixed(2)}</span>
                 )}
               </div>
-
-              {alert.xmlLink && (
-                <div className="mt-3 text-right">
-                  <a
-                    href={alert.xmlLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-600 hover:text-blue-800 text-xs underline"
-                  >
-                    詳細XML
-                  </a>
-                </div>
-              )}
             </div>
           ))}
         </div>
