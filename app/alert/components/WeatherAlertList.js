@@ -1,13 +1,14 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
-  regionMapping, 
   extractPrefecture, 
-  getSeverityStyle, 
-  getSeverityLabel, 
-  getRelativeTime 
-} from './regionConstants';
+  getRelativeTime, 
+  getSeverityBadgeStyle, 
+  getSeverityCardStyle, 
+  getSeverityLabel,
+  regionMapping 
+} from '../utils/alertUtils';
 
 const WeatherAlertList = () => {
   const [alerts, setAlerts] = useState([]);
@@ -17,7 +18,9 @@ const WeatherAlertList = () => {
   const [feedUpdated, setFeedUpdated] = useState(null);
   const [selectedRegion, setSelectedRegion] = useState('all');
   const [selectedPrefecture, setSelectedPrefecture] = useState('all');
+  const [searchTerm, setSearchTerm] = useState('');
   const [groupByRegion, setGroupByRegion] = useState(false);
+  const [showFormatInfo, setShowFormatInfo] = useState(false);
 
   // 気象庁防災情報を取得する関数
   const fetchWeatherAlerts = async () => {
@@ -26,22 +29,22 @@ const WeatherAlertList = () => {
     
     try {
       const response = await fetch('/api/weather-alerts');
-      
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       
       const data = await response.json();
-      setAlerts(data.alerts || []);
-      setLastUpdated(data.lastUpdated);
-      setFeedUpdated(data.feedUpdated);
       
-      if (data.alerts && data.alerts.length > 0 && data.alerts[0].xmlLink) {
-        console.log('XMLリンクサンプル:', data.alerts[0].xmlLink);
+      if (data.success) {
+        setAlerts(data.alerts || []);
+        setLastUpdated(data.lastUpdated);
+        setFeedUpdated(data.feedUpdated);
+      } else {
+        throw new Error(data.error || '気象データの取得に失敗しました');
       }
-      
     } catch (error) {
       setError(error.message);
+      console.error('気象データ取得エラー:', error);
     } finally {
       setLoading(false);
     }
@@ -49,24 +52,29 @@ const WeatherAlertList = () => {
 
   useEffect(() => {
     fetchWeatherAlerts();
+    // 3分ごとに自動更新
     const interval = setInterval(fetchWeatherAlerts, 3 * 60 * 1000);
     return () => clearInterval(interval);
   }, []);
 
-  // アラートをフィルタリング
+  // アラートをフィルタリング（検索機能を追加）
   const filteredAlerts = alerts.filter(alert => {
     const prefecture = extractPrefecture(alert.area, alert.publishingOffice);
     const region = regionMapping[prefecture] || '全国';
+
+    // 地域フィルター
+    const regionMatch = selectedRegion === 'all' || region === selectedRegion;
     
-    if (selectedRegion !== 'all' && selectedRegion !== region) {
-      return false;
-    }
+    // 都道府県フィルター
+    const prefectureMatch = selectedPrefecture === 'all' || prefecture === selectedPrefecture;
     
-    if (selectedPrefecture !== 'all' && selectedPrefecture !== prefecture) {
-      return false;
-    }
-    
-    return true;
+    // 検索フィルター（新機能）
+    const searchMatch = searchTerm === '' || 
+      alert.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      alert.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      prefecture.includes(searchTerm);
+
+    return regionMatch && prefectureMatch && searchMatch;
   });
 
   // 地域別にグループ化
@@ -74,12 +82,11 @@ const WeatherAlertList = () => {
     filteredAlerts.reduce((groups, alert) => {
       const prefecture = extractPrefecture(alert.area, alert.publishingOffice);
       const region = regionMapping[prefecture] || '全国';
-      const key = groupByRegion === 'region' ? region : prefecture;
       
-      if (!groups[key]) {
-        groups[key] = [];
+      if (!groups[region]) {
+        groups[region] = [];
       }
-      groups[key].push(alert);
+      groups[region].push(alert);
       return groups;
     }, {}) : null;
 
@@ -107,195 +114,237 @@ const WeatherAlertList = () => {
 
   // アラートカードコンポーネント
   const AlertCard = ({ alert, index }) => (
-    <div
-      key={alert.id || index}
-      className={`bg-white rounded-lg shadow-md p-6 ${getSeverityStyle(alert.severity)}`}
+    <div 
+      key={alert.id || index} 
+      className={`rounded-lg p-4 bg-white shadow-sm hover:shadow-md transition-shadow ${getSeverityCardStyle(alert.severity)}`}
     >
-      <div className="flex items-start justify-between mb-3">
-        <div className="flex items-center flex-1">
-          <div className="flex-1">
-            <h3 className="text-lg font-semibold mb-2">{alert.title}</h3>
-            <div className="flex items-center space-x-4 text-sm mb-2">
-              <span className={`px-3 py-1 rounded-full text-xs font-medium ${getSeverityStyle(alert.severity)}`}>
-                {alert.category}
-              </span>
-              <span className="text-xs text-gray-600">
-                {extractPrefecture(alert.area, alert.publishingOffice)}
-              </span>
-            </div>
+      <div className="flex justify-between items-start mb-3">
+        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getSeverityBadgeStyle(alert.severity)}`}>
+          {getSeverityLabel(alert.severity)}
+        </span>
+        <div className="text-right">
+          <div className="text-xs text-gray-500">{alert.category}</div>
+          <div className="text-xs text-gray-600 font-medium">
+            {getRelativeTime(alert.publishedAt)}
           </div>
         </div>
-        <div className="text-xs text-gray-500 text-right ml-4">
-          <div className="font-medium">{getRelativeTime(alert.publishedAt)}</div>
-          <div>{new Date(alert.publishedAt).toLocaleTimeString('ja-JP')}</div>
-        </div>
       </div>
       
-      <p className="text-gray-700 leading-relaxed mb-4">{alert.description}</p>
+      <h3 className="font-semibold text-lg mb-2 text-gray-800">{alert.title}</h3>
       
-      <div className="flex items-center justify-between text-xs text-gray-500 border-t pt-3">
-        <div className="flex items-center space-x-4">
-          <span>重要度: {getSeverityLabel(alert.severity)}</span>
-          <span>種別: {alert.eventType}</span>
-        </div>
-      </div>
+      <p className="text-sm text-gray-600 mb-2">
+        <span className="font-medium">対象地域:</span> {extractPrefecture(alert.area, alert.publishingOffice)}
+      </p>
+      
+      <p className="text-sm text-gray-600 mb-2">
+        <span className="font-medium">発表機関:</span> {alert.publishingOffice}
+      </p>
+      
+      <p className="text-sm text-gray-700 mb-3 line-clamp-3">
+        {alert.description}
+      </p>
+      
+      <p className="text-xs text-gray-500 border-t pt-2">
+        発表: {new Date(alert.publishedAt).toLocaleString('ja-JP')}
+      </p>
     </div>
   );
 
+  if (loading && alerts.length === 0) {
+    return (
+      <div className="min-h-screen bg-gray-100">
+        <div className="container mx-auto px-4 py-8">
+          <div className="bg-white rounded-lg shadow-lg p-8 text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+            <p className="text-gray-600">気象情報を取得中...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="max-w-6xl mx-auto p-6">
-      {/* ヘッダー部分 */}
-      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-        <div className="flex items-center justify-between mb-4">
-          <h1 className="text-2xl font-bold text-gray-800">気象庁防災情報</h1>
-          <button
-            onClick={fetchWeatherAlerts}
-            disabled={loading}
-            className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            {loading ? '更新中...' : '最新情報を取得'}
-          </button>
-        </div>
-
-        {/* フィルターとグループ化オプション */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">地方で絞り込み</label>
-            <select
-              value={selectedRegion}
-              onChange={(e) => handleRegionChange(e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+    <div className="min-h-screen bg-gray-100">
+      <div className="container mx-auto px-4 py-8">
+        <div className="bg-white rounded-lg shadow-lg p-6">
+          {/* ヘッダー */}
+          <div className="flex justify-between items-center mb-6">
+            <div className="flex items-center gap-3">
+              <h1 className="text-3xl font-bold text-gray-800">気象警報・注意報</h1>
+              {/* 情報ボタン */}
+              <button
+                onClick={() => setShowFormatInfo(!showFormatInfo)}
+                className="bg-blue-500 text-white w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold hover:bg-blue-600 transition-colors"
+                title="フォーマット情報を表示"
+              >
+                !
+              </button>
+            </div>
+            <button 
+              onClick={fetchWeatherAlerts}
+              disabled={loading}
+              className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors"
             >
-              <option value="all">全国</option>
-              {availableRegions.map(region => (
-                <option key={region} value={region}>{region}</option>
-              ))}
-            </select>
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">都道府県で絞り込み</label>
-            <select
-              value={selectedPrefecture}
-              onChange={(e) => handlePrefectureChange(e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="all">全国</option>
-              {availablePrefectures.map(prefecture => (
-                <option key={prefecture} value={prefecture}>{prefecture}</option>
-              ))}
-            </select>
+              {loading ? '更新中...' : '更新'}
+            </button>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">表示方法</label>
-            <select
-              value={groupByRegion}
-              onChange={(e) => setGroupByRegion(e.target.value || false)}
-              className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value={false}>一覧表示</option>
-              <option value="region">地方別にグループ化</option>
-              <option value="prefecture">都道府県別にグループ化</option>
-            </select>
+          {/* フォーマット情報の表示 */}
+          {showFormatInfo && (
+            <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex justify-between items-start mb-2">
+                <h3 className="text-lg font-semibold text-blue-800">気象庁フォーマット情報</h3>
+                <button
+                  onClick={() => setShowFormatInfo(false)}
+                  className="text-blue-600 hover:text-blue-800 font-bold text-xl"
+                >
+                  ×
+                </button>
+              </div>
+              <div className="space-y-2 text-blue-700">
+                <div className="flex items-start gap-2">
+                  <span className="font-semibold bg-blue-200 px-2 py-1 rounded text-xs">H27</span>
+                  <span className="text-sm">平成27年度（2015年）に策定されたフォーマットを表します</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="font-semibold bg-blue-200 px-2 py-1 rounded text-xs">H30</span>
+                  <span className="text-sm">平成30年度（2018年）に策定されたフォーマットを表します</span>
+                </div>
+                <p className="text-xs text-blue-600 mt-3">
+                  ※ これらのフォーマットは気象庁の防災情報XMLフォーマットの改定版を示しており、
+                  情報の構造や内容の表現方法が異なります。
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* フィルターとオプション */}
+          <div className="grid gap-4 lg:grid-cols-4 md:grid-cols-2 mb-6">
+            {/* 検索ボックス */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                キーワード検索
+              </label>
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="警報名や内容で検索..."
+                className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+
+            {/* 地方選択 */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                地方
+              </label>
+              <select
+                value={selectedRegion}
+                onChange={(e) => handleRegionChange(e.target.value)}
+                className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="all">全地方</option>
+                {availableRegions.map(region => (
+                  <option key={region} value={region}>{region}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* 都道府県選択 */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                都道府県
+              </label>
+              <select
+                value={selectedPrefecture}
+                onChange={(e) => handlePrefectureChange(e.target.value)}
+                className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="all">全都道府県</option>
+                {availablePrefectures.map(pref => (
+                  <option key={pref} value={pref}>{pref}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* 表示オプション */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                表示オプション
+              </label>
+              <label className="flex items-center p-2 border border-gray-300 rounded-md">
+                <input
+                  type="checkbox"
+                  checked={groupByRegion}
+                  onChange={(e) => setGroupByRegion(e.target.checked)}
+                  className="mr-2"
+                />
+                <span className="text-sm">地方別にグループ化</span>
+              </label>
+            </div>
           </div>
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600">
-          <div>
-            <span className="font-medium">総件数: </span>
-            <span className="text-blue-600 font-bold">{alerts.length}件</span>
-            {(selectedRegion !== 'all' || selectedPrefecture !== 'all') && (
-              <span className="ml-2">（表示: {filteredAlerts.length}件）</span>
+
+          {/* 統計情報 */}
+          <div className="flex flex-wrap gap-4 mb-6 text-sm text-gray-600">
+            <div>
+              <span className="font-medium">総件数: </span>
+              <span className="text-blue-600 font-bold">{alerts.length}件</span>
+              {(selectedRegion !== 'all' || selectedPrefecture !== 'all' || searchTerm !== '') && (
+                <span className="ml-2">（表示: {filteredAlerts.length}件）</span>
+              )}
+            </div>
+            {lastUpdated && (
+              <div>
+                <span className="font-medium">最終更新: </span>
+                <span>{new Date(lastUpdated).toLocaleString('ja-JP')}</span>
+              </div>
             )}
           </div>
-          {feedUpdated && (
-            <div>
-              <span className="font-medium">フィード更新: </span>
-              <span>{new Date(feedUpdated).toLocaleString('ja-JP')}</span>
+
+          {/* エラー表示 */}
+          {error && (
+            <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+              <span className="font-medium">エラー: </span>{error}
             </div>
           )}
-          {lastUpdated && (
-            <div>
-              <span className="font-medium">取得時刻: </span>
-              <span>{new Date(lastUpdated).toLocaleString('ja-JP')}</span>
-            </div>
-          )}
-        </div>
 
-        {error && (
-          <div className="mt-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
-            <div className="flex items-center">
-              <span className="font-medium">エラーが発生しました: </span>
-              <span>{error}</span>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* 読み込み中表示 */}
-      {loading && alerts.length === 0 && (
-        <div className="bg-white rounded-lg shadow-md p-8 text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">防災情報を取得中...</p>
-        </div>
-      )}
-
-      {/* アラート表示 */}
-      {filteredAlerts.length > 0 && (
-        <>
-          {groupByRegion ? (
-            <div className="space-y-8">
-              {Object.entries(groupedAlerts)
-                .sort(([a], [b]) => a.localeCompare(b))
-                .map(([groupName, groupAlerts]) => (
-                <div key={groupName} className="bg-white rounded-lg shadow-md p-6">
-                  <h2 className="text-xl font-bold text-gray-800 mb-4 border-b pb-2">
-                    {groupName} ({groupAlerts.length}件)
-                  </h2>
-                  <div className="space-y-4">
-                    {groupAlerts.map((alert, index) => (
-                      <AlertCard key={alert.id || index} alert={alert} index={index} />
-                    ))}
-                  </div>
+          {/* アラート一覧 */}
+          {filteredAlerts.length > 0 ? (
+            <>
+              {groupByRegion ? (
+                <div className="space-y-6">
+                  {Object.entries(groupedAlerts).map(([region, regionAlerts]) => (
+                    <div key={region}>
+                      <h2 className="text-xl font-semibold text-gray-800 mb-4 border-b pb-2">
+                        {region} ({regionAlerts.length}件)
+                      </h2>
+                      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                        {regionAlerts.map((alert, index) => (
+                          <AlertCard key={alert.id || index} alert={alert} index={index} />
+                        ))}
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              ) : (
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {filteredAlerts.map((alert, index) => (
+                    <AlertCard key={alert.id || index} alert={alert} index={index} />
+                  ))}
+                </div>
+              )}
+            </>
           ) : (
-            <div className="space-y-4">
-              {filteredAlerts.map((alert, index) => (
-                <AlertCard key={alert.id || index} alert={alert} index={index} />
-              ))}
+            <div className="text-center py-8">
+              <h3 className="text-lg font-medium text-gray-700 mb-2">
+                条件に一致する警報・注意報はありません
+              </h3>
+              <p className="text-gray-500">
+                検索条件やフィルターを変更してお試しください。
+              </p>
             </div>
           )}
-        </>
-      )}
-
-      {/* データがない場合の表示 */}
-      {!loading && filteredAlerts.length === 0 && !error && (
-        <div className="bg-white rounded-lg shadow-md p-8 text-center">
-          <h3 className="text-lg font-medium text-gray-700 mb-2">
-            {selectedRegion !== 'all' 
-              ? `${selectedRegion}で発表中の警報・注意報はありません`
-              : selectedPrefecture !== 'all'
-              ? `${selectedPrefecture}で発表中の警報・注意報はありません`
-              : '現在、発表中の警報・注意報はありません'
-            }
-          </h3>
-          <p className="text-gray-500">最新の気象情報をお確かめください。</p>
-        </div>
-      )}
-
-      {/* フッター情報 */}
-      <div className="mt-8 bg-gray-50 rounded-lg p-4 text-xs text-gray-600">
-        <div className="flex items-center justify-between">
-          <div>
-            <span className="font-medium">データ提供: </span>
-            <a href="https://www.data.jma.go.jp/developer/xml/feed/extra.xml" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-              気象庁XMLフィード
-            </a>
-          </div>
-          <div>自動更新間隔: 3分</div>
         </div>
       </div>
     </div>
