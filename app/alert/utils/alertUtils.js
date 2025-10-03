@@ -13,11 +13,10 @@ export const regionMapping = {
   '福岡': '九州', '佐賀': '九州', '長崎': '九州', '熊本': '九州', '大分': '九州', '宮崎': '九州', '鹿児島': '九州', '沖縄': '九州'
 };
 
-// regionConstants.jsの堅牢なextractPrefecture関数
+// 堅牢な都道府県抽出関数
 export const extractPrefecture = (area, publishingOffice) => {
   // 1. areaが明確に指定されている場合
   if (area && area !== '全国' && area !== '') {
-    // 都道府県名の正規化
     const normalizedArea = area.replace(/県|府|都|道/g, '');
     for (const prefecture of Object.keys(regionMapping)) {
       if (prefecture.includes(normalizedArea) || normalizedArea.includes(prefecture.replace(/県|府|都|道/g, ''))) {
@@ -29,17 +28,12 @@ export const extractPrefecture = (area, publishingOffice) => {
 
   // 2. publishingOfficeから都道府県を抽出
   if (publishingOffice) {
-    // 気象庁の発表元パターンに対応した正規表現
     const patterns = [
-      // 標準パターン: 「○○地方気象台」「○○気象台」
       /([^地方]+)地方気象台/,
       /([^気象]+)気象台/,
-      // 測候所パターン: 「○○測候所」
       /([^測候]+)測候所/,
-      // 直接的な都道府県名パターン
       /(北海道|青森|岩手|宮城|秋田|山形|福島|茨城|栃木|群馬|埼玉|千葉|東京|神奈川|新潟|富山|石川|福井|山梨|長野|岐阜|静岡|愛知|三重|滋賀|京都|大阪|兵庫|奈良|和歌山|鳥取|島根|岡山|広島|山口|徳島|香川|愛媛|高知|福岡|佐賀|長崎|熊本|大分|宮崎|鹿児島|沖縄)/,
-      // 地域名から都道府県を推定するパターン
-      /札幌|函館|旭川|釧路|帯広|北見|稚内/ // 北海道の地域
+      /札幌|函館|旭川|釧路|帯広|北見|稚内/
     ];
 
     for (const pattern of patterns) {
@@ -47,28 +41,20 @@ export const extractPrefecture = (area, publishingOffice) => {
       if (match) {
         let extracted = match[1];
         
-        // 北海道の地域名を北海道に変換
         if (['札幌', '函館', '旭川', '釧路', '帯広', '北見', '稚内'].includes(extracted)) {
           return '北海道';
         }
         
-        // 地方名から代表都道府県を推定
         const regionToPrefecture = {
-          '東北': '宮城',
-          '関東': '東京', 
-          '中部': '愛知',
-          '近畿': '大阪',
-          '関西': '大阪',
-          '中国': '広島',
-          '四国': '香川',
-          '九州': '福岡'
+          '東北': '宮城', '関東': '東京', '中部': '愛知',
+          '近畿': '大阪', '関西': '大阪', '中国': '広島',
+          '四国': '香川', '九州': '福岡'
         };
         
         if (regionToPrefecture[extracted]) {
           extracted = regionToPrefecture[extracted];
         }
         
-        // 都道府県名の正規化と照合
         for (const prefecture of Object.keys(regionMapping)) {
           const prefBase = prefecture.replace(/県|府|都|道/g, '');
           const extractedBase = extracted.replace(/県|府|都|道/g, '');
@@ -101,35 +87,25 @@ export const getRelativeTime = (publishedAt) => {
   }
 };
 
-// 重要度バッジのスタイル
+// 重要度バッジのスタイル（実際に使用される関数のみ）
 export const getSeverityBadgeStyle = (severity) => {
   switch (severity) {
-    case 'emergency':
-      return 'bg-red-600 text-white';
-    case 'severe':
-      return 'bg-orange-500 text-white';
-    case 'moderate':
-      return 'bg-yellow-500 text-black';
-    case 'minor':
-      return 'bg-blue-500 text-white';
-    default:
-      return 'bg-gray-500 text-white';
+    case 'emergency': return 'bg-red-600 text-white';
+    case 'severe': return 'bg-orange-500 text-white';
+    case 'moderate': return 'bg-yellow-500 text-black';
+    case 'minor': return 'bg-blue-500 text-white';
+    default: return 'bg-gray-500 text-white';
   }
 };
 
 // カード境界線のスタイル
 export const getSeverityCardStyle = (severity) => {
   switch (severity) {
-    case 'emergency':
-      return 'border-l-4 border-red-600';
-    case 'severe':
-      return 'border-l-4 border-orange-500';
-    case 'moderate':
-      return 'border-l-4 border-yellow-500';
-    case 'minor':
-      return 'border-l-4 border-blue-500';
-    default:
-      return 'border-l-4 border-gray-500';
+    case 'emergency': return 'border-l-4 border-red-600';
+    case 'severe': return 'border-l-4 border-orange-500';
+    case 'moderate': return 'border-l-4 border-yellow-500';
+    case 'minor': return 'border-l-4 border-blue-500';
+    default: return 'border-l-4 border-gray-500';
   }
 };
 

@@ -15,7 +15,6 @@ const WeatherAlertList = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [lastUpdated, setLastUpdated] = useState(null);
-  const [feedUpdated, setFeedUpdated] = useState(null);
   const [selectedRegion, setSelectedRegion] = useState('all');
   const [selectedPrefecture, setSelectedPrefecture] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -38,7 +37,6 @@ const WeatherAlertList = () => {
       if (data.success) {
         setAlerts(data.alerts || []);
         setLastUpdated(data.lastUpdated);
-        setFeedUpdated(data.feedUpdated);
       } else {
         throw new Error(data.error || '気象データの取得に失敗しました');
       }
@@ -57,18 +55,13 @@ const WeatherAlertList = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // アラートをフィルタリング（検索機能を追加）
+  // アラートをフィルタリング
   const filteredAlerts = alerts.filter(alert => {
     const prefecture = extractPrefecture(alert.area, alert.publishingOffice);
     const region = regionMapping[prefecture] || '全国';
 
-    // 地域フィルター
     const regionMatch = selectedRegion === 'all' || region === selectedRegion;
-    
-    // 都道府県フィルター
     const prefectureMatch = selectedPrefecture === 'all' || prefecture === selectedPrefecture;
-    
-    // 検索フィルター（新機能）
     const searchMatch = searchTerm === '' || 
       alert.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       alert.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -100,13 +93,12 @@ const WeatherAlertList = () => {
     return extractPrefecture(alert.area, alert.publishingOffice);
   }).filter(prefecture => prefecture !== '全国'))].sort();
 
-  // 地方選択時に都道府県をリセット
+  // イベントハンドラー
   const handleRegionChange = (region) => {
     setSelectedRegion(region);
     setSelectedPrefecture('all');
   };
 
-  // 都道府県選択時に地方をリセット
   const handlePrefectureChange = (prefecture) => {
     setSelectedPrefecture(prefecture);
     setSelectedRegion('all');
@@ -171,7 +163,6 @@ const WeatherAlertList = () => {
           <div className="flex justify-between items-center mb-6">
             <div className="flex items-center gap-3">
               <h1 className="text-3xl font-bold text-gray-800">気象警報・注意報</h1>
-              {/* 情報ボタン */}
               <button
                 onClick={() => setShowFormatInfo(!showFormatInfo)}
                 className="bg-blue-500 text-white w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold hover:bg-blue-600 transition-colors"
@@ -189,7 +180,7 @@ const WeatherAlertList = () => {
             </button>
           </div>
 
-          {/* フォーマット情報の表示 */}
+          {/* フォーマット情報パネル */}
           {showFormatInfo && (
             <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
               <div className="flex justify-between items-start mb-2">
@@ -218,13 +209,10 @@ const WeatherAlertList = () => {
             </div>
           )}
 
-          {/* フィルターとオプション */}
+          {/* フィルターセクション */}
           <div className="grid gap-4 lg:grid-cols-4 md:grid-cols-2 mb-6">
-            {/* 検索ボックス */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                キーワード検索
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">キーワード検索</label>
               <input
                 type="text"
                 value={searchTerm}
@@ -234,11 +222,8 @@ const WeatherAlertList = () => {
               />
             </div>
 
-            {/* 地方選択 */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                地方
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">地方</label>
               <select
                 value={selectedRegion}
                 onChange={(e) => handleRegionChange(e.target.value)}
@@ -251,11 +236,8 @@ const WeatherAlertList = () => {
               </select>
             </div>
 
-            {/* 都道府県選択 */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                都道府県
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">都道府県</label>
               <select
                 value={selectedPrefecture}
                 onChange={(e) => handlePrefectureChange(e.target.value)}
@@ -268,11 +250,8 @@ const WeatherAlertList = () => {
               </select>
             </div>
 
-            {/* 表示オプション */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                表示オプション
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">表示オプション</label>
               <label className="flex items-center p-2 border border-gray-300 rounded-md">
                 <input
                   type="checkbox"
