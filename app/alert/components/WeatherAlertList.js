@@ -20,16 +20,19 @@ const WeatherAlertList = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [groupByRegion, setGroupByRegion] = useState(false);
   const [showFormatInfo, setShowFormatInfo] = useState(false);
+  const [debugInfo, setDebugInfo] = useState(null);
 
   // 気象庁防災情報を取得する関数
   const fetchWeatherAlerts = async () => {
     setLoading(true);
     setError(null);
+    setDebugInfo(null);
     
     try {
       const response = await fetch('/api/weather-alerts');
+      
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        throw new Error(`HTTP error! status: ${response.status} ${response.statusText}`);
       }
       
       const data = await response.json();
@@ -37,12 +40,26 @@ const WeatherAlertList = () => {
       if (data.success) {
         setAlerts(data.alerts || []);
         setLastUpdated(data.lastUpdated);
+        
+        // デバッグ情報を保存
+        if (data.metadata) {
+          setDebugInfo(data.metadata);
+        }
+        
+        // データ処理エラーがある場合の警告
+        if (data.metadata?.errorEntries > 0) {
+          console.warn(`${data.metadata.errorEntries}件のエントリーでエラーが発生しました`);
+        }
       } else {
         throw new Error(data.error || '気象データの取得に失敗しました');
       }
     } catch (error) {
       setError(error.message);
-      console.error('気象データ取得エラー:', error);
+      console.error('気象データ取得エラー:', {
+        message: error.message,
+        stack: error.stack,
+        timestamp: new Date().toISOString()
+      });
     } finally {
       setLoading(false);
     }
@@ -180,6 +197,17 @@ const WeatherAlertList = () => {
             </button>
           </div>
 
+          {/* デバッグ情報表示（開発環境または管理者向け） */}
+          {debugInfo && debugInfo.errorEntries > 0 && (
+            <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <div className="text-sm text-yellow-800">
+                <span className="font-medium">処理情報: </span>
+                全{debugInfo.totalEntries}件中{debugInfo.processedEntries}件を処理、
+                {debugInfo.errorEntries}件でエラーが発生しました。
+              </div>
+            </div>
+          )}
+
           {/* フォーマット情報パネル */}
           {showFormatInfo && (
             <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
@@ -264,7 +292,7 @@ const WeatherAlertList = () => {
             </div>
           </div>
 
-          {/* 統計情報 */}
+          {/* 統計情報（改良版） */}
           <div className="flex flex-wrap gap-4 mb-6 text-sm text-gray-600">
             <div>
               <span className="font-medium">総件数: </span>
@@ -279,12 +307,30 @@ const WeatherAlertList = () => {
                 <span>{new Date(lastUpdated).toLocaleString('ja-JP')}</span>
               </div>
             )}
+            {debugInfo && (
+              <div className="text-xs text-gray-500">
+                処理成功率: {Math.round((debugInfo.processedEntries / debugInfo.totalEntries) * 100)}%
+              </div>
+            )}
           </div>
 
-          {/* エラー表示 */}
+          {/* エラー表示（改良版） */}
           {error && (
             <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
-              <span className="font-medium">エラー: </span>{error}
+              <div className="flex justify-between items-start">
+                <div>
+                  <span className="font-medium">エラー: </span>{error}
+                  <div className="text-xs text-red-600 mt-1">
+                    時刻: {new Date().toLocaleString('ja-JP')}
+                  </div>
+                </div>
+                <button
+                  onClick={fetchWeatherAlerts}
+                  className="text-red-600 hover:text-red-800 text-sm underline"
+                >
+                  再試行
+                </button>
+              </div>
             </div>
           )}
 

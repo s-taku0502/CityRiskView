@@ -53,11 +53,25 @@ export async function GET() {
             alerts.push(alert);
           }
         } catch (entryError) {
-          // エラーログは本番環境では削除
+          // 改善されたエラーハンドリング
+          console.error(`Failed to process weather entry: ${entry.id || 'unknown'}`, {
+            error: entryError.message,
+            stack: entryError.stack,
+            entry: {
+              id: entry.id,
+              title: entry.title,
+              category: entry.category?.[0]?.['@_term']
+            }
+          });
+          
+          if (process.env.NODE_ENV === 'development') {
+            console.warn('Full entry data:', entry);
+          }
         }
       });
     }
 
+    // 重要度でソート
     alerts.sort((a, b) => {
       const severityOrder = { 'emergency': 4, 'severe': 3, 'moderate': 2, 'minor': 1, 'info': 0 };
       return (severityOrder[b.severity] || 0) - (severityOrder[a.severity] || 0);
@@ -68,17 +82,19 @@ export async function GET() {
       alerts: alerts,
       lastUpdated: new Date().toISOString(),
       feedUpdated: parsedData.feed?.updated || new Date().toISOString(),
-      debug: {
+      metadata: {
         totalEntries: parsedData.feed?.entry ? (Array.isArray(parsedData.feed.entry) ? parsedData.feed.entry.length : 1) : 0,
-        processedAlerts: alerts.length
+        processedEntries: alerts.length,
+        errorEntries: (parsedData.feed?.entry ? (Array.isArray(parsedData.feed.entry) ? parsedData.feed.entry.length : 1) : 0) - alerts.length
       }
     });
 
   } catch (error) {
+    console.error('Weather alerts fetch error:', error);
     return NextResponse.json({
       success: false,
       error: error.message,
-      alerts: []
+      timestamp: new Date().toISOString()
     }, { status: 500 });
   }
 }
@@ -122,30 +138,40 @@ function processWeatherEntry(entry) {
     const title = entry.title;
     const content = getEntryContent(entry.content);
     const author = entry.author?.name || '気象庁';
-    const updated = entry.updated;
-    const id = entry.id;
-
     const alertType = determineAlertType(title);
     const severity = determineSeverity(title, content);
     const region = extractRegion(content, author);
-    const coordinates = getRegionCoordinates(region);
 
-    const processedAlert = {
-      id: id,
+    return {
+      id: entry.id,
       title: title,
       description: content || '詳細情報なし',
-      severity: severity,
+      category: entry.category?.[0]?.['@_term'] || 'その他',
+      publishedAt: entry.published || entry.updated,
+      publishingOffice: entry.author?.name || '気象庁',
       area: region,
-      eventType: alertType.eventType,
-      category: alertType.category,
-      publishedAt: updated,
-      publishingOffice: author,
-      coordinates: coordinates,
-      xmlLink: entry.link?.["@_href"] || null
+      severity: severity,
+      alertType: alertType,
+      link: entry.link?.['@_href'] || entry.id
     };
-
-    return processedAlert;
-  } catch (error) {
+  } catch (entryError) {
+    // エラーログを記録（本番環境でも重要）
+    console.error(`Failed to process weather entry: ${entry.id || 'unknown'}`, {
+      error: entryError.message,
+      stack: entryError.stack,
+      entry: {
+        id: entry.id,
+        title: entry.title,
+        category: entry.category?.[0]?.['@_term']
+      }
+    });
+    
+    // デバッグ用の追加情報
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('Full entry data:', entry);
+    }
+    
+    // エラーが発生したエントリーはnullを返して後でフィルタリング
     return null;
   }
 }
