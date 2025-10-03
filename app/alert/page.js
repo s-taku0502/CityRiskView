@@ -9,6 +9,7 @@ export default function AlertsPage() {
   const [lastUpdated, setLastUpdated] = useState(null);
   const [selectedPrefecture, setSelectedPrefecture] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [showFormatInfo, setShowFormatInfo] = useState(false);
 
   // 気象庁防災情報を取得
   const fetchAlerts = async () => {
@@ -178,7 +179,17 @@ export default function AlertsPage() {
         <div className="bg-white rounded-lg shadow-lg p-6">
           {/* ヘッダー */}
           <div className="flex justify-between items-center mb-6">
-            <h1 className="text-3xl font-bold text-gray-800">気象警報・注意報</h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-3xl font-bold text-gray-800">気象警報・注意報</h1>
+              {/* 情報ボタン */}
+              <button
+                onClick={() => setShowFormatInfo(!showFormatInfo)}
+                className="bg-blue-500 text-white w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold hover:bg-blue-600 transition-colors"
+                title="フォーマット情報を表示"
+              >
+                !
+              </button>
+            </div>
             <button 
               onClick={fetchAlerts}
               disabled={loading}
@@ -187,6 +198,35 @@ export default function AlertsPage() {
               {loading ? '更新中...' : '更新'}
             </button>
           </div>
+
+          {/* フォーマット情報の表示 */}
+          {showFormatInfo && (
+            <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex justify-between items-start mb-2">
+                <h3 className="text-lg font-semibold text-blue-800">気象庁フォーマット情報</h3>
+                <button
+                  onClick={() => setShowFormatInfo(false)}
+                  className="text-blue-600 hover:text-blue-800 font-bold text-xl"
+                >
+                  ×
+                </button>
+              </div>
+              <div className="space-y-2 text-blue-700">
+                <div className="flex items-start gap-2">
+                  <span className="font-semibold bg-blue-200 px-2 py-1 rounded text-xs">H27</span>
+                  <span className="text-sm">平成27年度（2015年）に策定されたフォーマットを表します</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="font-semibold bg-blue-200 px-2 py-1 rounded text-xs">H30</span>
+                  <span className="text-sm">平成30年度（2018年）に策定されたフォーマットを表します</span>
+                </div>
+                <p className="text-xs text-blue-600 mt-3">
+                  ※ これらのフォーマットは気象庁の防災情報XMLフォーマットの改定版を示しており、
+                  情報の構造や内容の表現方法が異なります。
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* 検索とフィルター */}
           <div className="grid gap-4 md:grid-cols-2 mb-6">
