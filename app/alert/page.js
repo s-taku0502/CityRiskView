@@ -1,108 +1,66 @@
-"use client";
-import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase"; // supabaseのインポートを追加
+'use client';
 
-export default function AlertPage() {
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
+
+export default function AlertsPage() {
   const [alerts, setAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [isAdjusting, setIsAdjusting] = useState(false); // 状態を追加
+  const [lastUpdated, setLastUpdated] = useState(null);
 
   useEffect(() => {
-    // アラートデータを取得する関数
-    async function fetchAlerts() {
-      try {
-        setError(null);
-        const res = await fetch("/api/weather-alerts"); // より詳細なAPIに変更
-        
-        if (!res.ok) {
-          throw new Error(`HTTP error! status: ${res.status}`);
-        }
-        
-        const data = await res.json();
-        
-        if (data.success) {
-          setAlerts(data.alerts || []);
-        } else {
-          throw new Error(data.error || 'データの取得に失敗しました');
-        }
-      } catch (e) {
-        console.error("警報データ取得失敗:", e);
-        setError(e.message);
-        setAlerts([]);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    // Supabaseから調整中状態を取得する関数
-    const fetchAdjusting = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('ui_adjusting')
-          .select('is_adjusting')
-          .eq('screen', 'alert')
-          .single();
-        
-        if (!error && data) {
-          setIsAdjusting(data.is_adjusting);
-        }
-      } catch (error) {
-        console.error('調整状態の取得に失敗:', error);
-      }
-    };
-
-    // 初回データ取得
     fetchAlerts();
-    fetchAdjusting();
-
-    // 3分ごとにアラートデータを更新
-    const interval = setInterval(fetchAlerts, 3 * 60 * 1000);
-    
-    return () => clearInterval(interval);
   }, []);
 
-  // 重要度に応じたスタイルを取得
-  const getSeverityStyle = (severity) => {
-    switch (severity) {
-      case 'emergency':
-        return 'bg-red-50 border-l-4 border-red-500';
-      case 'severe':
-        return 'bg-orange-50 border-l-4 border-orange-500';
-      case 'moderate':
-        return 'bg-yellow-50 border-l-4 border-yellow-500';
-      case 'minor':
-        return 'bg-green-50 border-l-4 border-green-500';
-      default:
-        return 'bg-blue-50 border-l-4 border-blue-500';
+  const fetchAlerts = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/weather-alerts');
+      const data = await response.json();
+      
+      if (data.success) {
+        setAlerts(data.alerts);
+        setLastUpdated(data.lastUpdated);
+        setError(null);
+      } else {
+        setError(data.error || '警報データの取得に失敗しました');
+      }
+    } catch (err) {
+      setError('ネットワークエラーが発生しました');
+    } finally {
+      setLoading(false);
     }
   };
 
-  // 重要度バッジのスタイル
-  const getSeverityBadgeStyle = (severity) => {
-    switch (severity) {
-      case 'emergency':
-        return 'bg-red-100 text-red-800';
-      case 'severe':
-        return 'bg-orange-100 text-orange-800';
-      case 'moderate':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'minor':
-        return 'bg-green-100 text-green-800';
-      default:
-        return 'bg-blue-100 text-blue-800';
-    }
+  const getSeverityColor = (severity) => {
+    const colors = {
+      emergency: 'bg-red-600 text-white',
+      severe: 'bg-orange-500 text-white',
+      moderate: 'bg-yellow-500 text-black',
+      minor: 'bg-blue-500 text-white',
+      info: 'bg-gray-500 text-white'
+    };
+    return colors[severity] || colors.info;
   };
 
-  // ローディング表示
+  const getSeverityText = (severity) => {
+    const texts = {
+      emergency: '緊急',
+      severe: '重要',
+      moderate: '注意',
+      minor: '軽微',
+      info: '情報'
+    };
+    return texts[severity] || '情報';
+  };
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-100 p-6">
-        <div className="flex items-center justify-center min-h-[300px]">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-            <p className="text-gray-600">気象情報を読み込み中...</p>
-          </div>
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">警報データを読み込み中...</p>
         </div>
       </div>
     );
@@ -110,123 +68,82 @@ export default function AlertPage() {
 
   return (
     <div className="min-h-screen bg-gray-100">
-      <div className="p-6">
-        {/* 調整中の警告表示 */}
-        {isAdjusting && (
-          <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-6 rounded-r-lg">
-            <div className="flex items-center">
-              <span className="font-medium">現在調整中のため、不具合が出る場合があります</span>
-            </div>
-          </div>
-        )}
-
-        {/* ヘッダー */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <h1 className="text-3xl font-bold text-gray-800">気象庁 警報・注意報</h1>
-            <button
-              onClick={() => window.location.reload()}
-              className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors flex items-center"
+      <div className="container mx-auto px-4 py-8">
+        <div className="bg-white rounded-lg shadow-lg p-6">
+          <div className="flex justify-between items-center mb-6">
+            <h1 className="text-3xl font-bold text-gray-800">気象警報・注意報</h1>
+            <Link 
+              href="/"
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
             >
-              更新
-            </button>
+              ホームに戻る
+            </Link>
           </div>
-          
-          <div className="text-sm text-gray-600">
-            <span className="font-medium">総件数: </span>
-            <span className="text-blue-600 font-bold">{alerts.length}件</span>
-            <span className="ml-4 font-medium">最終更新: </span>
-            <span>{new Date().toLocaleString('ja-JP')}</span>
-          </div>
-        </div>
 
-        {/* エラー表示 */}
-        {error && (
-          <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded-r-lg">
-            <div className="flex items-center">
-              <span className="text-xl mr-2">×</span>
-              <div>
-                <span className="font-medium">エラーが発生しました: </span>
-                <span>{error}</span>
-              </div>
-            </div>
-          </div>
-        )}
+          {lastUpdated && (
+            <p className="text-sm text-gray-600 mb-4">
+              最終更新: {new Date(lastUpdated).toLocaleString('ja-JP')}
+            </p>
+          )}
 
-        {/* アラート一覧 */}
-        <div className="space-y-4">
-          {alerts.length === 0 && !error && (
-            <div className="bg-green-50 border-l-4 border-green-500 text-green-700 p-6 rounded-r-lg">
-              <div className="flex items-center">
-                  <a className="font-medium">現在、発表中の警報・注意報はありません</a>
-                  <br />
-                  <a className="text-sm text-green-600 mt-1">安全な状況が続いています</a>
-              </div>
+          <button
+            onClick={fetchAlerts}
+            className="mb-6 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+            disabled={loading}
+          >
+            更新
+          </button>
+
+          {error && (
+            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
+              <p className="font-bold">エラー</p>
+              <p>{error}</p>
             </div>
           )}
-          
-          {alerts.map((alert, index) => (
-            <div
-              key={alert.id || index}
-              className={`bg-white rounded-lg shadow-md p-6 ${getSeverityStyle(alert.severity)}`}
-            >
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex-1">
-                  <div className="flex items-center mb-2">
-                    <h3 className="text-lg font-semibold text-gray-800 mr-3">{alert.title}</h3>
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${getSeverityBadgeStyle(alert.severity)}`}>
-                      {alert.category || '情報'}
+
+          {alerts.length === 0 && !error ? (
+            <div className="text-center py-12">
+              <p className="text-gray-600 text-lg">現在、発表中の警報・注意報はありません</p>
+            </div>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {alerts.map((alert) => (
+                <div key={alert.id} className="border rounded-lg p-4 bg-white shadow-sm hover:shadow-md transition-shadow">
+                  <div className="flex justify-between items-start mb-2">
+                    <span className={`px-2 py-1 rounded text-xs font-semibold ${getSeverityColor(alert.severity)}`}>
+                      {getSeverityText(alert.severity)}
                     </span>
+                    <span className="text-xs text-gray-500">{alert.category}</span>
                   </div>
                   
-                  <div className="flex items-center space-x-4 text-sm text-gray-600 mb-3">
-                    <span className="flex items-center">
-                      {alert.area || '全国'}
-                    </span>
-                    <span className="flex items-center">
-                      {alert.publishingOffice || '気象庁'}
-                    </span>
-                  </div>
+                  <h3 className="font-semibold text-lg mb-2 text-gray-800">
+                    {alert.title}
+                  </h3>
+                  
+                  <p className="text-sm text-gray-600 mb-2">
+                    対象地域: {alert.area}
+                  </p>
+                  
+                  <p className="text-sm text-gray-600 mb-2">
+                    発表機関: {alert.publishingOffice}
+                  </p>
+                  
+                  {alert.description && alert.description !== '詳細情報なし' && (
+                    <p className="text-sm text-gray-700 mb-3 line-clamp-3">
+                      {alert.description.length > 100 
+                        ? alert.description.substring(0, 100) + '...'
+                        : alert.description
+                      }
+                    </p>
+                  )}
+                  
+                  <p className="text-xs text-gray-500">
+                    発表: {new Date(alert.publishedAt).toLocaleString('ja-JP')}
+                  </p>
                 </div>
-                
-                <div className="text-xs text-gray-500 text-right ml-4">
-                  <div className="font-medium">
-                    {alert.publishedAt ? new Date(alert.publishedAt).toLocaleString('ja-JP') : '時刻不明'}
-                  </div>
-                </div>
-              </div>
-              
-              <p className="text-gray-700 leading-relaxed mb-4">
-                {alert.description || alert.content || 'No description available'}
-              </p>
-              
-              {alert.xmlLink && (
-                <div className="border-t pt-3">
-                  <a
-                    href={alert.xmlLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-600 hover:text-blue-800 text-sm underline flex items-center"
-                  >
-                    詳細XML
-                  </a>
-                </div>
-              )}
+              ))}
             </div>
-          ))}
-        </div>
-
-        {/* フッター情報 */}
-        <div className="mt-8 bg-white rounded-lg shadow-md p-4">
-          <div className="text-xs text-gray-600 text-center">
-            <div className="flex items-center justify-center space-x-4">
-              <span>データ提供: 気象庁</span>
-              <span>•</span>
-              <span>自動更新: 3分間隔</span>
-              <span>•</span>
-              <span>最新情報は気象庁公式サイトでご確認ください</span>
-            </div>
-          </div>
+          )}
         </div>
       </div>
     </div>
