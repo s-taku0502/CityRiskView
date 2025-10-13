@@ -28,17 +28,17 @@ export default function Sidebar() {
       // 募集開始日からイベント日の間かチェック（イベント翌日0時まで表示）
       if (currentDate >= recruitmentStart && currentDate < eventEndDate) {
         MenuItems = [
+          { href: "/evacuation", text: "避難情報" },
           { href: "/stock", text: "備蓄情報" },
           { href: "/alert", text: "アラート情報" },
-          { href: "/evacuation", text: "避難情報" },
           { href: "/update", text: "更新情報" },
           { href: "/only_events", text: "システムに関するアンケート", small: true },
         ];
       } else {
         MenuItems = [
+          { href: "/evacuation", text: "避難情報" },
           { href: "/stock", text: "備蓄情報" },
           { href: "/alert", text: "アラート情報" },
-          { href: "/evacuation", text: "避難情報" },
           { href: "/update", text: "更新情報" },
         ];
       }
