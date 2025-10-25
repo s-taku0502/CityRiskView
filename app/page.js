@@ -5,26 +5,51 @@ import { useRouter } from "next/navigation";
 
 export default function Home() {
   const router = useRouter();
-  const REDIRECT_PATH = "/evacuation";
-  const REDIRECT_DELAY_MS = 1200;
+  const REDIRECT_DELAY_MS = 1000;
 
   useEffect(() => {
+    const hostname = window.location.hostname;
+
+    // ドメインによってリダイレクト先を分岐
+    let redirectPath = "/evacuation";
+
+    if (hostname === "cityriskview.vercel.app") {
+      // 本番のメインドメイン → /location
+      redirectPath = "/location";
+    } else if (hostname.startsWith("cityriskview-")) {
+      // 都道府県別サブドメイン → /evacuation
+      redirectPath = "/evacuation";
+    } else if (hostname === "localhost") {
+      // ローカル開発環境 → /evacuation（固定）
+      redirectPath = "/evacuation";
+    } else {
+      // 想定外のドメイン → 未対応メッセージへ遷移（例: /unsupported）
+      redirectPath = "/unsupported";
+    }
+
     const timer = setTimeout(() => {
-      router.replace(REDIRECT_PATH);
+      router.replace(redirectPath);
     }, REDIRECT_DELAY_MS);
 
     return () => clearTimeout(timer);
-  }, []);
+  }, [router]);
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
       <div className="text-xl font-semibold mb-6 text-gray-800">
-        避難情報の画面へ遷移します
+        {typeof window !== "undefined" && window.location.hostname === "cityriskview.vercel.app"
+          ? "お住まいの地域を判定しています..."
+          : "避難情報の画面へ遷移します"}
       </div>
-      <div role="status" className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-indigo-500"></div>
+      <div
+        role="status"
+        className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-indigo-500"
+      ></div>
     </div>
   );
 }
+
+
 
 // 'use client'
 
