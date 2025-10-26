@@ -1,6 +1,6 @@
 'use client';
 import { useEffect } from 'react';
-import { prefectures } from '../utils/prefectures';
+import { separatedPrefectures } from '../utils/prefectures';
 
 export default function LocationRedirectPage() {
   useEffect(() => {
@@ -8,21 +8,19 @@ export default function LocationRedirectPage() {
       async (pos) => {
         const { latitude, longitude } = pos.coords;
 
-        // 位置情報APIから都道府県を取得
         const res = await fetch(
           `https://geoapi.heartrails.com/api/json?method=searchByGeoLocation&x=${longitude}&y=${latitude}`
         );
         const data = await res.json();
         const prefectureName = data.response.location[0].prefecture;
 
-        // 対応する都道府県コードを検索
-        const matched = prefectures.find((p) => p.name === prefectureName);
-
+        const matched = separatedPrefectures.find((p) => p.name === prefectureName);
         if (matched) {
-          const redirectUrl = `https://cityriskview-${matched.code}.vercel.app`;
+          const redirectUrl = `https://cityriskview-${matched.prefName}.vercel.app`;
           window.location.href = redirectUrl;
         } else {
           alert(`未対応の地域です：${prefectureName}`);
+          window.location.href = '/unsupported';
         }
       },
       (err) => {
