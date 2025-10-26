@@ -22,8 +22,15 @@ export function getPrefCodeFromURL(hostFromSSR) {
   // 小文字化・ポート削除
   host = host.split(":")[0].toLowerCase();
 
-  // ローカルは明示的に null を返す
-  if (host === "localhost" || host.startsWith("localhost.")) return null;
+  // ローカルは明示的に null を返していたが、ローカル用デフォルトがあればそれを返す
+  if (host === "localhost" || host.startsWith("localhost.")) {
+    const defaultPref = process.env.NEXT_PUBLIC_DEFAULT_PREF || null;
+    if (defaultPref) {
+      // 数値／ゼロ埋めを既存形式に合わせる（例: 2 -> "02"）
+      return String(defaultPref).padStart(2, "0");
+    }
+    return null;
+  }
 
   const parts = host.split(".");
   const firstPart = parts[0] || "";
@@ -35,27 +42,23 @@ export function getPrefCodeFromURL(hostFromSSR) {
   } else if (firstPart.startsWith("city-risk-view-")) {
     prefSlug = firstPart.replace("city-risk-view-", "");
   } else if (host.includes("cityriskview")) {
-    // <slug>.cityriskview.* の場合、先頭サブドメインを slug とする
     if (parts.length >= 3) {
       prefSlug = parts[0];
     } else {
-      // まれなケースは先頭部分を試す
       prefSlug = firstPart !== "cityriskview" ? firstPart : null;
     }
   } else if (host.includes("city-risk-view")) {
-    // city-risk-view ドメイン内の <slug>.city-risk-view.* を想定
     if (parts.length >= 3) {
       prefSlug = parts[0];
     } else {
       prefSlug = firstPart !== "city-risk-view" ? firstPart : null;
     }
   } else {
-    // フォールバック: 先頭サブドメインを slug 候補として試す（例: tokyo.example.com）
     prefSlug = firstPart || null;
   }
 
   if (!prefSlug) return null;
 
-  const matched = separatedPrefectures.find((p) => p.prefName === prefSlug);
+  const matched = separatedPrefectures.find((p) => p.slug === prefSlug);
   return matched ? matched.code : null;
 }
