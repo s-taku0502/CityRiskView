@@ -19,7 +19,6 @@ export default function LocationRedirectPage() {
           const redirectUrl = `https://cityriskview-${matched.prefName}.vercel.app`;
           window.location.href = redirectUrl;
         } else {
-          alert(`未対応の地域です：${prefectureName}`);
           window.location.href = '/unsupported';
         }
       },
