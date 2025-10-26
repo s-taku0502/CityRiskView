@@ -1,31 +1,30 @@
 'use client'
-
 /*
   最寄りの避難所を見つけるフック。
   現在地を基に、最も近い避難所を計算する。
   Supabase から都道府県ごとの避難所データを取得し、
   距離（km）と徒歩時間（分）を算出する。
 */
-
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { calculateDistance } from '../utils/distance'
 
-export const useNearestShelter = (currentLocation, prefName) => {
+export const useNearestShelter = (currentLocation, prefCode) => {
   const [nearestShelter, setNearestShelter] = useState(null)
   const [allShelters, setAllShelters] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
 
-  // ✅ 後方互換対応：prefName がない場合は共通テーブル「shelters」を使用
-  const resolveTableName = (prefName) => {
-    if (!prefName || prefName.trim() === '') return 'shelters'
-    return `shelters_${prefName}`
+  // ✅ 後方互換対応：prefCode がない場合は共通テーブル「shelters」を使用
+  const resolveTableName = (code) => {
+    if (!code || String(code).trim() === '') return 'shelters'
+    const padded = String(code).padStart(2, '0')
+    return `shelters_pref${padded}`
   }
 
   // 避難所データを取得
   const fetchShelters = async () => {
-    const tableName = resolveTableName(prefName)
+    const tableName = resolveTableName(prefCode)
 
     try {
       setLoading(true)
@@ -35,13 +34,26 @@ export const useNearestShelter = (currentLocation, prefName) => {
         .from(tableName)
         .select('*')
 
-      if (supabaseError) throw supabaseError
+      if (supabaseError) {
+        // フォールバック: 指定テーブルが無ければ共通テーブルを試す
+        if (tableName !== 'shelters') {
+          const { data: fallbackData, error: fallbackErr } = await supabase
+            .from('shelters')
+            .select('*')
+            .eq('pref_code', String(prefCode).padStart(2, '0'))
+          if (!fallbackErr) {
+            setAllShelters(fallbackData || [])
+            return fallbackData || []
+          }
+        }
+        throw supabaseError
+      }
 
       setAllShelters(shelters || [])
       return shelters || []
     } catch (err) {
       console.error('避難所データの取得に失敗:', err)
-      setError(err.message)
+      setError(err.message || String(err))
       return []
     } finally {
       setLoading(false)
@@ -79,10 +91,10 @@ export const useNearestShelter = (currentLocation, prefName) => {
     }
   }, [currentLocation, allShelters])
 
-  // 初回・prefName変更時に再取得
+  // 初回・prefCode変更時に再取得
   useEffect(() => {
     fetchShelters()
-  }, [prefName])
+  }, [prefCode])
 
   // 距離順リスト
   const getSheltersByDistance = () => {

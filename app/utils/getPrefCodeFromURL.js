@@ -59,6 +59,12 @@ export function getPrefCodeFromURL(hostFromSSR) {
 
   if (!prefSlug) return null;
 
-  const matched = separatedPrefectures.find((p) => p.slug === prefSlug);
+  // 変更: separatedPrefectures のプロパティ名に合わせて照合
+  // 優先順: prefName -> name -> slug (互換フォールバック)
+  const matched = separatedPrefectures.find((p) =>
+    (p.prefName && p.prefName === prefSlug) ||
+    (p.name && p.name === prefSlug) ||
+    (p.slug && p.slug === prefSlug)
+  );
   return matched ? matched.code : null;
 }
