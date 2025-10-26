@@ -56,6 +56,6 @@ export function getPrefCodeFromURL(hostFromSSR) {
 
   if (!prefSlug) return null;
 
-  const matched = separatedPrefectures.find((p) => p.slug === prefSlug);
+  const matched = separatedPrefectures.find((p) => p.prefName === prefSlug);
   return matched ? matched.code : null;
 }
