@@ -38,7 +38,7 @@ export default function BulkManagements() {
 
   const handleUpload = async () => {
     if (!csvFile || !selectedPref) {
-      alert('CSVファイルと都道府県を指定してください。');
+      setStatus('CSVファイルと都道府県を指定してください。');
       return;
     }
 
