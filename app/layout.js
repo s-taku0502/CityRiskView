@@ -1,12 +1,20 @@
 import "./globals.css";
 import Sidebar from "@/components/Sidebar";
-import Script from 'next/script';
+import Script from "next/script";
+import { getPrefCodeFromURL } from "@/app/utils/getPrefCodeFromURL";
 
 export const metadata = {
   title: "CityRiskView",
 };
 
 export default function RootLayout({ children }) {
+  // SSRでは window がないので一旦nullにして、CSRで取得
+  let prefCode = null;
+  if (typeof window !== "undefined") {
+    prefCode = getPrefCodeFromURL();
+    console.log("🗾 Detected Pref Code:", prefCode);
+  }
+
   return (
     <html lang="ja">
       <head>
@@ -33,9 +41,9 @@ export default function RootLayout({ children }) {
             gtag('config', 'G-Y37BP6LQGG');
           `}
         </Script>
-        
+
         <div className="flex h-full">
-          <Sidebar />
+          <Sidebar prefCode={prefCode} />
           <main className="flex-1 overflow-y-auto">
             {children}
           </main>
