@@ -13,7 +13,8 @@ export default function Home() {
     // ドメインによってリダイレクト先を分岐
     let redirectPath = "/evacuation";
 
-    if (hostname === "cityriskview.vercel.app") {
+    const mainDomain = process.env.NEXT_PUBLIC_MAIN_DOMAIN || "cityriskview.vercel.app";
+    if (hostname === mainDomain) {
       // 本番のメインドメイン → /location
       redirectPath = "/location";
     } else if (hostname.startsWith("cityriskview-")) {
