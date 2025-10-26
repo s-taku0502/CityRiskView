@@ -19,6 +19,9 @@ export default function Home() {
     } else if (hostname.startsWith("cityriskview-")) {
       // 都道府県別サブドメイン → /evacuation
       redirectPath = "/evacuation";
+    } else if (hostname.startsWith("city-risk-view-")) {
+      // 都道府県別サブドメイン → /evacuation
+      redirectPath = "/evacuation";
     } else if (hostname === "localhost") {
       // ローカル開発環境 → /evacuation（固定）
       redirectPath = "/evacuation";
