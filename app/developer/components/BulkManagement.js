@@ -24,7 +24,7 @@ function getTableName(tableType, selectedPrefecture) {
     : `emergency_shelters_pref${pref.code}`; // 例: emergency_shelters_pref02
 }
 
-export default function BulkManagements() {
+export default function BulkManagement() {
   const [tableType, setTableType] = useState('designated_shelters');
   const [selectedPref, setSelectedPref] = useState('');
   const [csvFile, setCsvFile] = useState(null);
