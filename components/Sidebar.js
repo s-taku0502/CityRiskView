@@ -25,21 +25,25 @@ export default function Sidebar() {
 
       let MenuItems = [];
 
+      // 共通メニュー（追加: 都道府県選択・全国）
+      const commonItems = [
+        { href: "/evacuation", text: "避難情報" },
+        { href: "/stock", text: "備蓄情報" },
+        { href: "/alert", text: "アラート情報" },
+        { href: "/prefectures_selection", text: "都道府県選択" },
+        // { href: "https://cityriskview.vercel.app", text: "全国", small: true },
+        { href: "/update", text: "更新情報", small: true },
+      ];
+
       // 募集開始日からイベント日の間かチェック（イベント翌日0時まで表示）
       if (currentDate >= recruitmentStart && currentDate < eventEndDate) {
         MenuItems = [
-          { href: "/evacuation", text: "避難情報" },
-          { href: "/stock", text: "備蓄情報" },
-          { href: "/alert", text: "アラート情報" },
-          { href: "/update", text: "更新情報" },
           { href: "/only_events", text: "システムに関するアンケート", small: true },
+          ...commonItems,
         ];
       } else {
         MenuItems = [
-          { href: "/evacuation", text: "避難情報" },
-          { href: "/stock", text: "備蓄情報" },
-          { href: "/alert", text: "アラート情報" },
-          { href: "/update", text: "更新情報" },
+          ...commonItems,
         ];
       }
 
@@ -89,16 +93,27 @@ export default function Sidebar() {
           } transition-transform duration-300 ease-in-out z-40`}>
           <div className="flex flex-col p-4 mt-16">
             <nav className="flex flex-col gap-4">
-              {menuItems.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={() => setIsOpen(false)}
-                  className={`py-2 ${item.small ? "text-sm" : "text-xl"}`}
-                >
-                  {item.text}
-                </Link>
-              ))}
+              {menuItems.map((item) =>
+                item.href.startsWith('http') ? (
+                  <a
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setIsOpen(false)}
+                    className={`py-2 ${item.small ? "text-sm" : "text-xl"}`}
+                  >
+                    {item.text}
+                  </a>
+                ) : (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setIsOpen(false)}
+                    className={`py-2 ${item.small ? "text-sm" : "text-xl"}`}
+                  >
+                    {item.text}
+                  </Link>
+                )
+              )}
             </nav>
           </div>
         </div>
@@ -110,15 +125,21 @@ export default function Sidebar() {
     <div className="h-screen w-64 bg-gray-800 text-white flex flex-col p-4">
       <h1 className="text-2xl font-bold mb-8">CityRiskView</h1>
       <nav className="flex flex-col gap-4">
-        {menuItems.map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            className={item.small ? "text-sm" : "text-xl"}
-          >
-            {item.text}
-          </Link>
-        ))}
+        {menuItems.map((item) =>
+          item.href.startsWith('http') ? (
+            <a
+              key={item.href}
+              href={item.href}
+              className={item.small ? "text-sm" : "text-xl"}
+            >
+              {item.text}
+            </a>
+          ) : (
+            <Link key={item.href} href={item.href} className={item.small ? "text-sm" : "text-xl"}>
+              {item.text}
+            </Link>
+          )
+        )}
       </nav>
     </div>
   );
