@@ -15,7 +15,7 @@ export const useNearestShelter = (currentLocation, prefCode) => {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
 
-  // 後方互換対応：prefCode がない場合は共通テーブル「shelters」を使用
+  // ✅ 後方互換対応：prefCode がない場合は共通テーブル「shelters」を使用
   const resolveTableName = (code) => {
     if (!code || String(code).trim() === '') return 'shelters'
     const padded = String(code).padStart(2, '0')
