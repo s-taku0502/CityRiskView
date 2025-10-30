@@ -24,7 +24,7 @@ export default function StockPage() {
     <div>
       {isAdjusting && (
         <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-4">
-          現在調整中のため、不具合が出る場合があります
+          サンプルデータを表示しています。実際の在庫情報とは異なる場合があります。
         </div>
       )}
       <DefaultPage />

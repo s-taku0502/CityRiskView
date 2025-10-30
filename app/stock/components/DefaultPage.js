@@ -1,162 +1,118 @@
 'use client';
-import FilterPanel from '@/components/FilterPanel';
-import { extractPrefectureAndCity } from '@/app/utils/address';
-import { prefectures } from '@/app/utils/prefectures';
-import { fetchCitiesByPref } from '@/app/utils/cityApi';
-import { getPrefectureAddressPrefix } from '@/app/utils/prefectureMap';
-import { useState, useEffect } from 'react';
-// import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
-import baseStockData from '@/data/ShelterStocks.json';
 
-export default function StockViewPage() {
-  const [keyword, setKeyword] = useState('');
-  const [facilityName, setFacilityName] = useState('');
-  const [prefecture, setPrefecture] = useState('');
-  const [city, setCity] = useState('');
-  const [shelters, setShelters] = useState([]);
-  const [prefectureOptions] = useState(prefectures);
-  const [cityOptions, setCityOptions] = useState([]);
+import React, { useEffect, useMemo, useState } from 'react';
+import { separatedPrefectures } from '../../utils/prefectures';
 
-  // const router = useRouter();
+export default function DefaultPage() {
+  const [prefCode, setPrefCode] = useState(separatedPrefectures[0].code);
+  const [items, setItems] = useState([]); // ここでは避難所データを格納
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  // 都道府県変更時にSupabaseクエリで避難所を取得
-  useEffect(() => {
-    fetchSheltersByPrefecture();
-  }, [prefecture]);
+  const tableName = useMemo(() => `shelters_pref${prefCode}`, [prefCode]);
 
   useEffect(() => {
-    if (prefecture) {
-      fetchCities(prefecture);
-    } else {
-      setCityOptions([]);
-    }
-  }, [prefecture]);
-
-  // SQLクエリ: SELECT * FROM shelters WHERE LEFT(address, 3) = '選択された都道府県の左3文字'
-  const fetchSheltersByPrefecture = async () => {
-    try {
-      let query = supabase.from('shelters').select('*');
-      
-      if (prefecture) {
-        // 選択された都道府県に対応する住所の左3文字を取得
-        const addressPrefix = getPrefectureAddressPrefix(prefecture);
-        if (addressPrefix) {
-          // PostgreSQLのLEFT関数を使用して住所の左3文字で絞り込み
-          // SQL: SELECT * FROM shelters WHERE LEFT(address, 3) = 'addressPrefix'
-          query = query.filter('address', 'ilike', `${addressPrefix}%`);
-        } else {
-          setShelters([]);
-          return;
-        }
+    const fetchShelters = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await fetch(`/api/shelters?pref=${prefCode}`);
+        if (!res.ok) throw new Error(`shelters API: ${res.status}`);
+        const json = await res.json();
+        const list = Array.isArray(json.data) ? json.data : [];
+        setItems(list);
+      } catch (e) {
+        setError(e?.message ?? String(e));
+        setItems([]);
+      } finally {
+        setLoading(false);
       }
-      
-      const { data, error } = await query;
-      if (error) throw error;
-      
-      const sheltersWithKana = data.map(shelter => {
-        const { prefecture: extractedPref, city } = extractPrefectureAndCity(shelter.address || "");
-        return {
-          ...shelter,
-          name_kana: [shelter.name, shelter.name.replace(/市立|県立|小学校|中学校|高等学校|公民館/g, '')],
-          prefecture: extractedPref,
-          city,
-        };
-      });
-      
-      setShelters(sheltersWithKana);
-      
-      if (prefecture) {
-        const addressPrefix = getPrefectureAddressPrefix(prefecture);
-        console.log(`都道府県: ${prefecture}`);
-      }
-      
-    } catch (error) {
-      console.error('Error fetching shelters:', error);
-      setShelters([]);
-    }
-  };
+    };
 
-  // 市区町村一覧をAPIから取得
-  const fetchCities = async (selectedPrefecture) => {
-    const cities = await fetchCitiesByPref(selectedPrefecture);
-    setCityOptions(cities);
-  };
+    fetchShelters();
+  }, [prefCode]);
 
-  // 追加の絞り込みロジック（キーワード、施設名、市区町村）
-  const filteredShelters = shelters.filter((shelter) => {
-    const matchesKeyword =
-      !keyword ||
-      shelter.name_kana.some((k) =>
-        k.toLowerCase().includes(keyword.toLowerCase())
-      );
-    const matchesFacilityName =
-      !facilityName ||
-      shelter.name.toLowerCase().includes(facilityName.toLowerCase());
-    
-    const matchesCity = !city || shelter.city.startsWith(city);
-    
-    return matchesKeyword && matchesFacilityName && matchesCity;
-  });
+  const hazardLabels = {
+    flood: '洪水',
+    landslide: '崖崩れ/地滑り',
+    high_tide: '高潮',
+    earthquake: '地震',
+    tsunami: '津波',
+    large_fire: '大規模火事',
+    inland_flood: '内水氾濫',
+    volcano: '火山現象',
+  };
 
   return (
-    <div className="p-4 space-y-6">
-      <div className="mt-6">
-        <h4 className="font-semibold text-lg mb-2">避難所の絞り込み</h4>
-        <FilterPanel
-          keyword={keyword}
-          setKeyword={setKeyword}
-          facilityName={facilityName}
-          setFacilityName={setFacilityName}
-          prefecture={prefecture}
-          setPrefecture={setPrefecture}
-          city={city}
-          setCity={setCity}
-          prefectureOptions={prefectureOptions}
-          cityOptions={cityOptions}
-        />
-      </div>
-      
-      {/* 表示件数を表示 */}
-      {/* <div className="text-sm text-gray-600">
-        表示件数: {filteredShelters.length}件
-        {prefecture && (
-          <span className="ml-2 text-blue-600">
-            ({prefecture} - 住所が「{getPrefectureAddressPrefix(prefecture)}」で始まる避難所)
-          </span>
-        )}
-      </div> */}
+    <div>
+      <div className="mb-4 flex items-center gap-4">
+        <label htmlFor="pref-select" className="font-medium">都道府県：</label>
+        <select
+          id="pref-select"
+          value={prefCode}
+          onChange={(e) => setPrefCode(e.target.value)}
+          className="border rounded px-2 py-1"
+        >
+          {separatedPrefectures.map((p) => (
+            <option key={p.code} value={p.code}>
+              {p.name}
+            </option>
+          ))}
+        </select>
 
-      {filteredShelters.map((shelter) => {
-        const stock = baseStockData[shelter.id] || [];
-        return (
-          <div key={shelter.id} className="border rounded p-4 shadow mt-6">
-            <h3 className="text-xl font-semibold mb-2">{shelter.name}</h3>
-            <p className="text-sm text-gray-600 mb-2">
-              住所: {shelter.address} 
-            </p>
-            {Object.entries(
-              stock.reduce((acc, item) => {
-                if (!acc[item.category]) acc[item.category] = [];
-                acc[item.category].push(item);
-                return acc;
-              }, {})
-            ).map(([category, items]) => (
-              <div key={category} className="mb-4">
-                <h4 className="text-md font-bold mb-2">{category}</h4>
-                <ul className="space-y-2">
-                  {items.map((item) => (
-                    <li key={item.id} className="flex justify-between border p-2 rounded">
-                      <span>{item.name}</span>
-                      <span className="text-gray-600">残数: {item.counts}</span>
-                    </li>
-                  ))}
-                </ul>
+        <div className="ml-auto text-sm text-gray-600">表示テーブル: {tableName}</div>
+      </div>
+
+      {loading && <div>読み込み中...</div>}
+      {error && <div className="text-red-600">エラー: {error}</div>}
+
+      {!loading && items.length === 0 && <div>避難所データがありません。</div>}
+
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 mt-4">
+        {items.map((s) => (
+          <article key={s.id ?? `${s.pref_name}-${s.common_id}`} className="border rounded-lg p-4 shadow-sm bg-white">
+            <header className="mb-2">
+              <div className="text-lg font-semibold">{s.name || '無名の施設'}</div>
+              <div className="text-sm text-gray-500">{s.pref_name || ''} {s.address || ''}</div>
+            </header>
+
+            <div className="mb-2 text-sm">
+              <div><span className="font-medium">共通ID:</span> {s.common_id || '—'}</div>
+              <div><span className="font-medium">緯度/経度:</span> {s.latitude ?? '—'} / {s.longitude ?? '—'}</div>
+            </div>
+
+            <div className="mb-3">
+              <div className="font-medium text-sm mb-1">対応想定災害</div>
+              <div className="flex flex-wrap gap-2">
+                {Object.keys(hazardLabels).map((key) => {
+                  if (s[key]) {
+                    return (
+                      <span key={key} className="text-xs bg-red-100 text-red-800 px-2 py-1 rounded-full">
+                        {hazardLabels[key]}
+                      </span>
+                    );
+                  }
+                  return null;
+                })}
+                {Object.keys(hazardLabels).every((k) => !s[k]) && (
+                  <span className="text-xs text-gray-500">特に指定なし</span>
+                )}
               </div>
-            ))}
-          </div>
-        );
-      })}
+            </div>
+
+            {s.remarks && (
+              <div className="mb-3 text-sm text-gray-700">
+                <div className="font-medium text-sm mb-1">備考</div>
+                <div>{s.remarks}</div>
+              </div>
+            )}
+
+            <footer className="text-xs text-gray-500">
+              <div>データID: {s.id ?? '—'}</div>
+            </footer>
+          </article>
+        ))}
+      </div>
     </div>
   );
 }

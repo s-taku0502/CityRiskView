@@ -93,9 +93,9 @@ export default function BulkManagement() {
 
         if (error) {
           console.error(error);
-          setStatus(`❌ エラーが発生しました: ${error.message}`);
+          setStatus(`エラーが発生しました: ${error.message}`);
         } else {
-          setStatus(`✅ ${data.length} 件のデータを ${tableName} に登録しました。`);
+          setStatus(`${data.length} 件のデータを ${tableName} に登録しました。`);
         }
       },
     });
