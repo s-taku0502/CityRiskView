@@ -18,6 +18,12 @@ export default function PrefecturesSelectionPage() {
       <div className="max-w-4xl mx-auto">
         <h1 className="text-2xl font-bold mb-4">都道府県を選択</h1>
 
+        <div className="mb-4">
+          <p className="text-gray-700">
+            各都道府県の避難情報や災害情報を確認するには、以下から選択してください。
+          </p>
+        </div>
+
         <div className="mb-6">
           <button
             onClick={goToNation}
