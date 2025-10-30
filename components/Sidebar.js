@@ -30,7 +30,7 @@ export default function Sidebar() {
         { href: "/evacuation", text: "避難情報" },
         { href: "/stock", text: "備蓄情報" },
         { href: "/alert", text: "アラート情報" },
-        { href: "/prefectures_selection", text: "都道府県選択" },
+        { href: "/prefectures_selection", text: "各地域の情報をみる" },
         // テキストを配列にして二段表示にする
         { href: "https://cityriskview-entry.vercel.app/input", text: ["避難者情報登録フォーム", "（仮運用版）"], small: true },
         // { href: "https://cityriskview.vercel.app", text: "全国", small: true },
