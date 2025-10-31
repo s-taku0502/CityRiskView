@@ -78,19 +78,19 @@ export default function AdminPage() {
             <p>通知管理（開発中）</p>
           </div>
         )
-      case 'stats':
+      case 'status':
         return (
           <div className="bg-white rounded-lg shadow p-6">
             <h3 className="text-lg font-medium mb-4">Google Analytics統計</h3>
             <div className="space-y-4">
               <div className="bg-blue-50 p-4 rounded-lg">
-                <h4 className="font-medium text-blue-900 mb-2">📊 利用状況分析</h4>
+                <h4 className="font-medium text-blue-900 mb-2">利用状況分析</h4>
                 <p className="text-sm text-blue-700">
                   Google Analyticsにより、サイトのアクセス状況、ページビュー、ユーザー行動を分析しています。
                 </p>
               </div>
               <div className="bg-green-50 p-4 rounded-lg">
-                <h4 className="font-medium text-green-900 mb-2">🎯 データ収集項目</h4>
+                <h4 className="font-medium text-green-900 mb-2">データ収集項目</h4>
                 <ul className="text-sm text-green-700 space-y-1">
                   <li>• ページビュー数</li>
                   <li>• セッション数</li>
@@ -100,7 +100,7 @@ export default function AdminPage() {
                 </ul>
               </div>
               <div className="bg-yellow-50 p-4 rounded-lg">
-                <h4 className="font-medium text-yellow-900 mb-2">📈 改善への活用</h4>
+                <h4 className="font-medium text-yellow-900 mb-2">改善への活用</h4>
                 <p className="text-sm text-yellow-700">
                   収集したデータは、システムの使いやすさの向上と機能改善に活用されます。
                   個人を特定できる情報は収集していません。
@@ -124,7 +124,7 @@ export default function AdminPage() {
                 rel="noopener noreferrer"
                 className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
               >
-                📊 Google Analytics を開く
+                Google Analytics を開く
               </a>
             </div>
           </div>
@@ -236,53 +236,13 @@ export default function AdminPage() {
                     </button>
 
                     <button
-                      onClick={() => setCurrentView('alerts')}
-                      className={`w-full px-4 py-2 rounded-md text-sm font-medium ${currentView === 'alerts'
-                          ? 'bg-yellow-600 text-white'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                        }`}
-                    >
-                      通知管理
-                    </button>
-
-                    <button
-                      onClick={() => setCurrentView('stats')}
-                      className={`w-full px-4 py-2 rounded-md text-sm font-medium ${currentView === 'stats'
-                          ? 'bg-purple-600 text-white'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                        }`}
-                    >
-                      📊 Analytics統計
-                    </button>
-
-                    <button
-                      onClick={() => setCurrentView('analytics')}
-                      className={`w-full px-4 py-2 rounded-md text-sm font-medium ${currentView === 'analytics'
-                          ? 'bg-indigo-600 text-white'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                        }`}
-                    >
-                      📈 Analytics管理
-                    </button>
-
-                    <button
-                      onClick={() => setCurrentView('events')}
-                      className={`w-full px-4 py-2 rounded-md text-sm font-medium ${currentView === 'events'
-                          ? 'bg-orange-600 text-white'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                        }`}
-                    >
-                      イベント管理
-                    </button>
-
-                    <button
                       onClick={() => setCurrentView('release')}
                       className={`w-full px-4 py-2 rounded-md text-sm font-medium ${currentView === 'release'
                           ? 'bg-gray-800 text-white'
                           : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                         }`}
                     >
-                      🚀 リリース情報
+                      リリース情報
                     </button>
                   </div>
                 </div>
