@@ -7,6 +7,7 @@ import LocationButton from '@/app/map/components/LocationButton';
 import { supabase } from '@/lib/supabase';
 import { MARKER_COLOR_SHELTER, MARKER_COLOR_CURRENT_LOCATION } from '../constants';
 import PopupInfo from './PopupInfo'; // 追加
+import { getPrefCodeFromURL } from '@/app/utils/getPrefCodeFromURL';
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
 
@@ -35,7 +36,7 @@ export default function Map({ center, onShelterSelect }) {
 
     try {
       const { data: shelters, error } = await supabase
-        .from('shelters')
+        .from(`emergency_shelters_pref${getPrefCodeFromURL()}`)
         .select('*');
 
       if (error) throw error;
