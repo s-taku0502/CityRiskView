@@ -214,7 +214,7 @@ export default function GuestDashboard() {
         return renderStockView()
       case 'info':
         return renderShelterInfo()
-      case 'stats':
+      case 'status':
         return (
           <div className="bg-white rounded-lg shadow p-6">
             <h3 className="text-lg font-medium mb-4">統計情報</h3>
@@ -328,9 +328,9 @@ export default function GuestDashboard() {
               避難所情報
             </button>
             <button
-              onClick={() => setCurrentView('stats')}
+              onClick={() => setCurrentView('status')}
               className={`${
-                currentView === 'stats'
+                currentView === 'status'
                   ? 'border-indigo-500 text-gray-900'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               } whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm`}
