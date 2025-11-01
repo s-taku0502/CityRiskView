@@ -25,6 +25,16 @@ export default function EvacuationPage() {
   } = useNearestShelter(currentLocation)
 
   useEffect(() => {
+    console.log('EvacuationPage state:', {
+      currentLocation,
+      shelterLoading,
+      shelterError,
+      nearestShelter,
+      allSheltersLength: Array.isArray(allShelters) ? allShelters.length : 'N/A'
+    })
+  }, [currentLocation, shelterLoading, shelterError, nearestShelter, allShelters])
+
+  useEffect(() => {
     initializeEvacuation()
     // Supabaseから調整中状態を取得
     const fetchAdjusting = async () => {
