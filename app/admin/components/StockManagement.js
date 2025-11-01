@@ -88,7 +88,7 @@ export default function StockManagement({ selectedShelter, isGuest = false }) {
         <div className="flex justify-between items-center mb-4">
           <div>
             <h2 className="text-xl font-bold text-gray-900">
-              📦 {selectedShelter.name} - 備蓄管理
+              {selectedShelter.name} - 備蓄管理
             </h2>
             {isGuest && (
               <p className="text-sm text-orange-600 mt-1">
@@ -102,13 +102,13 @@ export default function StockManagement({ selectedShelter, isGuest = false }) {
                 onClick={() => setShowAddForm(true)}
                 className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium"
               >
-                ➕ 補充登録
+                補充登録
               </button>
               <button
                 onClick={() => setShowUseForm(true)}
                 className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-md text-sm font-medium"
               >
-                ➖ 使用登録
+                使用登録
               </button>
             </div>
           )}
@@ -118,7 +118,7 @@ export default function StockManagement({ selectedShelter, isGuest = false }) {
         {isGuest && (
           <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
             <p className="text-sm text-blue-700">
-              💡 現在の備蓄状況を確認できます。備蓄の追加や使用は管理者のみ可能です。
+              現在の備蓄状況を確認できます。備蓄の追加や使用は管理者のみ可能です。
             </p>
           </div>
         )}
