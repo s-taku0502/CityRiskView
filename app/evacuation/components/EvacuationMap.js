@@ -205,7 +205,7 @@ export default function EvacuationMap({ currentLocation, nearestShelter, allShel
                   }`}>
                     {shelter.capacity > 0 
                       ? `${Math.round((shelter.current_people || 0) / shelter.capacity * 100)}%`
-                      : '利用率: N/A'
+                      : '利用率: 現在実装中'
                     }
                   </span>
                 </div>

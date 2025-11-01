@@ -75,9 +75,9 @@ export default function RouteDisplay({ currentLocation, nearestShelter }) {
             <h5 className="font-medium text-blue-700 mb-2">基本情報</h5>
             <ul className="text-sm text-blue-600 space-y-1">
               <li>• 名称: {nearestShelter.name}</li>
-              <li>• 住所: {nearestShelter.location}</li>
-              <li>• 定員: {nearestShelter.capacity || 0}人</li>
-              <li>• 現在の避難者: {nearestShelter.current_people || 0}人</li>
+              <li>• 住所: {nearestShelter.address}</li>
+              <li>• 定員: {nearestShelter.capacity > 0 ? `${nearestShelter.capacity} 人` : "未設定"}</li>
+              <li>• 現在の避難者: {nearestShelter.current_people > 0 ? `${nearestShelter.current_people} 人` : "現在実装中"}</li>
             </ul>
           </div>
           <div>
@@ -86,7 +86,7 @@ export default function RouteDisplay({ currentLocation, nearestShelter }) {
               <p>混雑度: {
                 nearestShelter.capacity > 0 
                   ? `${Math.round((nearestShelter.current_people || 0) / nearestShelter.capacity * 100)}%`
-                  : 'N/A'
+                  : '最大受け入れ人数が設定されていません'
               }</p>
               <div className="mt-2">
                 <div className="w-full bg-blue-200 rounded-full h-2">
