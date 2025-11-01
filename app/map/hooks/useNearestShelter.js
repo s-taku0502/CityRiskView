@@ -16,11 +16,44 @@ export const useNearestShelter = (currentLocation, prefCode) => {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
 
-  // ✅ 後方互換対応：prefCode がない場合は共通テーブル「shelters」を使用
-  const resolveTableName = (code) => {
-    if (!code || String(code).trim() === '') return 'shelters'
-    const padded = String(code).padStart(2, '0')
-    return `shelters_pref${padded}`
+  // テーブル名解決: 入力はコード(1/01/13)、都道府県名("東京都")、または英語サブドメイン("tokyo") を許容
+  const resolveTableName = (input) => {
+    // デフォルトは pref17（変更不要ならそのまま）
+    const defaultTable = 'emergency_shelters_pref17'
+    if (!input || String(input).trim() === '') return { tableName: defaultTable }
+
+    const s = String(input).trim()
+    let code = null
+
+    // 数字のみなら県コードとみなす（1 -> 01）。範囲チェック（01〜47）
+    if (/^\d+$/.test(s)) {
+      const padded = String(Number(s)).padStart(2, '0')
+      const n = Number(padded)
+      if (n >= 1 && n <= 47) code = padded
+    } else {
+      // 名前または英語サブドメインでマッチ（小文字許容）
+      const found = separatedPrefectures.find(
+        (p) =>
+          p.code === s ||
+          p.name === s ||
+          p.prefName === s ||
+          p.prefName.toLowerCase() === s.toLowerCase()
+      )
+      if (found) code = found.code
+    }
+
+    // 解決できなければデフォルトにフォールバック
+    if (!code) return { tableName: defaultTable }
+
+    const prefObj = separatedPrefectures.find((p) => p.code === code)
+    const prefName = prefObj ? prefObj.name : null
+
+    // 常に emergency_shelters_pref{xx} を返す（xx は 2 桁）
+    return {
+      tableName: `emergency_shelters_pref${String(code).padStart(2, '0')}`,
+      resolvedCode: String(code).padStart(2, '0'),
+      resolvedPrefName: prefName
+    }
   }
 
   // 座標を抽出するユーティリティ（複数フォーマットに対応）
@@ -72,7 +105,8 @@ export const useNearestShelter = (currentLocation, prefCode) => {
 
   // 避難所データを取得
   const fetchShelters = async () => {
-    const tableName = resolveTableName(prefCode)
+    const { tableName, resolvedCode, resolvedPrefName } = resolveTableName(prefCode)
+    console.log('[useNearestShelter] fetchShelters start', { tableName, resolvedCode, resolvedPrefName })
 
     try {
       setLoading(true)
@@ -82,18 +116,18 @@ export const useNearestShelter = (currentLocation, prefCode) => {
         .from(tableName)
         .select('*')
 
+      console.log('[useNearestShelter] raw shelters fetched', { len: shelters?.length, supabaseError })
+
+      // フォールバック: 指定テーブルが無ければ共通テーブルを試す（pref_code を使わない）
       if (supabaseError) {
-        // フォールバック: 指定テーブルが無ければ共通テーブルを試す（pref_code を使わない）
-        if (tableName !== 'shelters') {
+        if (tableName !== 'emergency_shelters_pref17') {
           const { data: fallbackData, error: fallbackErr } = await supabase
-            .from('shelters')
+            .from('emergency_shelters_pref17')
             .select('*')
           if (!fallbackErr && Array.isArray(fallbackData)) {
-            // 可能なら prefCode から都道府県名を得て pref_name で絞る（存在する場合のみ）
-            const padded = String(prefCode || '').padStart(2, '0')
-            const prefObj = separatedPrefectures.find((p) => p.code === padded)
-            const filtered = prefObj
-              ? fallbackData.filter((s) => String(s.pref_name || '').trim() === String(prefObj.name || '').trim())
+            // 可能なら resolvedPrefName があれば pref_name で絞る（存在する場合のみ）
+            const filtered = resolvedPrefName
+              ? fallbackData.filter((s) => String(s.pref_name || '').trim() === resolvedPrefName)
               : fallbackData
             const withCoords = (filtered || []).map((s) => ({ ...s })).filter((s) => extractCoords(s))
             setAllShelters(withCoords || [])
@@ -105,6 +139,7 @@ export const useNearestShelter = (currentLocation, prefCode) => {
 
       // 座標を持つ避難所だけ残す（描画と距離計算に必須）
       const valid = (shelters || []).filter((s) => extractCoords(s))
+      console.log('[useNearestShelter] valid with coords', { validLen: valid.length })
       setAllShelters(valid)
       return valid
     } catch (err) {

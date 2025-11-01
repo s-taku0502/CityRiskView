@@ -78,10 +78,10 @@ export default function EvacuationMap({ currentLocation, nearestShelter, allShel
             </div>
             <div>
               <p className="text-sm text-gray-700">
-                定員: {nearestShelter.capacity || 0}人
+                定員: {nearestShelter.capacity > 0 ? `${nearestShelter.capacity} 人` : "未設定"}
               </p>
               <p className="text-sm text-gray-700">
-                現在の避難者: {nearestShelter.current_people || 0}人
+                現在の避難者: {nearestShelter.current_people > 0 ? `${nearestShelter.current_people} 人` : "現在実装中"}
               </p>
               <p className="text-sm text-blue-600">
                 徒歩: 約{nearestShelter.walkingTime}分
@@ -128,8 +128,8 @@ export default function EvacuationMap({ currentLocation, nearestShelter, allShel
             </div>
             <div>
               <div className="space-y-1 text-sm">
-                <p><span className="font-medium">定員:</span> {selectedShelter.capacity || 0}人</p>
-                <p><span className="font-medium">現在の避難者:</span> {selectedShelter.current_people || 0}人</p>
+                <p><span className="font-medium">定員:</span> {selectedShelter.capacity > 0 ? `${selectedShelter.capacity} 人` : "未設定"}</p>
+                <p><span className="font-medium">現在の避難者:</span> {selectedShelter.current_people > 0 ? `${selectedShelter.current_people} 人` : "現在実装中"}</p>
                 <p><span className="font-medium">空き:</span> {(selectedShelter.capacity || 0) - (selectedShelter.current_people || 0)}人</p>
               </div>
               <div className="mt-3">
@@ -138,7 +138,7 @@ export default function EvacuationMap({ currentLocation, nearestShelter, allShel
                   <span>
                     {selectedShelter.capacity > 0 
                       ? `${Math.round((selectedShelter.current_people || 0) / selectedShelter.capacity * 100)}%`
-                      : 'N/A'
+                      : '最大受け入れ人数が設定されていません'
                     }
                   </span>
                 </div>
@@ -196,8 +196,8 @@ export default function EvacuationMap({ currentLocation, nearestShelter, allShel
                   </div>
                 </div>
                 <div className="mt-2 flex items-center space-x-4 text-xs text-gray-500">
-                  <span>定員: {shelter.capacity || 0}人</span>
-                  <span>避難者: {shelter.current_people || 0}人</span>
+                  <span>定員: {shelter.capacity > 0 ? `${shelter.capacity} 人` : "未設定"}</span>
+                  <span>避難者: {shelter.current_people > 0 ? `${shelter.current_people} 人`: "現在実装中"}</span>
                   <span className={`font-medium ${
                     (shelter.current_people || 0) / (shelter.capacity || 1) > 0.8
                       ? 'text-red-600'
@@ -205,7 +205,7 @@ export default function EvacuationMap({ currentLocation, nearestShelter, allShel
                   }`}>
                     {shelter.capacity > 0 
                       ? `${Math.round((shelter.current_people || 0) / shelter.capacity * 100)}%`
-                      : 'N/A'
+                      : '利用率: 現在実装中'
                     }
                   </span>
                 </div>
