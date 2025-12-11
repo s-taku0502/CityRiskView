@@ -11,7 +11,7 @@ export default function Home() {
     const hostname = window.location.hostname;
 
     // ドメインによってリダイレクト先を分岐
-    let redirectPath = "/alert";
+    let redirectPath = "/location";
 
     const mainDomain = process.env.NEXT_PUBLIC_MAIN_DOMAIN || "cityriskview.vercel.app";
     if (hostname === mainDomain) {
