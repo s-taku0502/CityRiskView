@@ -13,23 +13,23 @@ export default function Home() {
     // ドメインによってリダイレクト先を分岐
     let redirectPath = "/alert";
 
-    // const mainDomain = process.env.NEXT_PUBLIC_MAIN_DOMAIN || "cityriskview.vercel.app";
-    // if (hostname === mainDomain) {
-    //   // 本番のメインドメイン → /location
-    //   redirectPath = "/location";
-    // } else if (hostname.startsWith("cityriskview-")) {
-    //   // 都道府県別サブドメイン → /evacuation
-    //   redirectPath = "/evacuation";
-    // } else if (hostname.startsWith("city-risk-view-")) {
-    //   // 都道府県別サブドメイン → /evacuation
-    //   redirectPath = "/evacuation";
-    // } else if (hostname === "localhost") {
-    //   // ローカル開発環境 → /evacuation（固定）
-    //   redirectPath = "/evacuation";
-    // } else {
-    //   // 想定外のドメイン → 未対応メッセージへ遷移（例: /unsupported）
-    //   redirectPath = "/unsupported";
-    // }
+    const mainDomain = process.env.NEXT_PUBLIC_MAIN_DOMAIN || "cityriskview.vercel.app";
+    if (hostname === mainDomain) {
+      // 本番のメインドメイン → /location
+      redirectPath = "/location";
+    } else if (hostname.startsWith("cityriskview-")) {
+      // 都道府県別サブドメイン → /evacuation
+      redirectPath = "/evacuation";
+    } else if (hostname.startsWith("city-risk-view-")) {
+      // 都道府県別サブドメイン → /evacuation
+      redirectPath = "/evacuation";
+    } else if (hostname === "localhost") {
+      // ローカル開発環境 → /evacuation（固定）
+      redirectPath = "/evacuation";
+    } else {
+      // 想定外のドメイン → 未対応メッセージへ遷移（例: /unsupported）
+      redirectPath = "/unsupported";
+    }
 
     const timer = setTimeout(() => {
       router.replace(redirectPath);
