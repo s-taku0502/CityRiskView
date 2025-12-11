@@ -77,6 +77,10 @@ CityRiskViewは、災害時の避難所情報や備蓄状況を可視化・管�
 
 問題が発生した場合は、[GitHubのIssues](https://github.com/s-taku0502/CityRiskView/issues)に報告してください。
 
+## 関連記事
+
+- [市役所職員を巻き込んだ学生の個人開発について](https://note.com/link_sudo/n/n323066394bfb)
+
 ## 開発者
 
 - [sudo](https://s-taku0502.vercel.app)
