@@ -12,7 +12,7 @@ export default function RootLayout({ children }) {
   let prefCode = null;
   if (typeof window !== "undefined") {
     prefCode = getPrefCodeFromURL();
-    console.log("🗾 Detected Pref Code:", prefCode);
+    console.log("Detected Pref Code:", prefCode);
   }
 
   return (
