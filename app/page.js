@@ -13,18 +13,12 @@ export default function Home() {
     // ドメインによってリダイレクト先を分岐
     let redirectPath = "/evacuation";
 
-    const mainDomain = process.env.NEXT_PUBLIC_MAIN_DOMAIN || "cityriskview.vercel.app";
-    if (hostname === mainDomain) {
-      // 本番のメインドメイン → /location
-      redirectPath = "/location";
-    } else if (hostname.startsWith("cityriskview-")) {
-      // 都道府県別サブドメイン → /evacuation
+    const mainDomain = process.env.NEXT_PUBLIC_MAIN_DOMAIN || "crvmap.app";
+    if (hostname === mainDomain || hostname === "localhost") {
+      // メインドメイン または ローカル開発環境 → /evacuation
       redirectPath = "/evacuation";
-    } else if (hostname.startsWith("city-risk-view-")) {
-      // 都道府県別サブドメイン → /evacuation
-      redirectPath = "/evacuation";
-    } else if (hostname === "localhost") {
-      // ローカル開発環境 → /evacuation（固定）
+    } else if (hostname.includes(mainDomain.split(":")[0])) {
+      // メインドメインのサブドメイン形式 → /evacuation
       redirectPath = "/evacuation";
     } else {
       // 想定外のドメイン → 未対応メッセージへ遷移（例: /unsupported）
@@ -41,7 +35,9 @@ export default function Home() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
       <div className="text-xl font-semibold mb-6 text-gray-800">
-        {typeof window !== "undefined" && window.location.hostname === "cityriskview.vercel.app"
+        {typeof window !== "undefined" && 
+          (window.location.hostname === "localhost" || 
+           window.location.hostname === (process.env.NEXT_PUBLIC_MAIN_DOMAIN || "crvmap.app"))
           ? "お住まいの地域を判定しています..."
           : "避難情報の画面へ遷移します"}
       </div>

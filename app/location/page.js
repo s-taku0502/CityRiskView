@@ -16,7 +16,7 @@ export default function LocationRedirectPage() {
 
         const matched = separatedPrefectures.find((p) => p.name === prefectureName);
         if (matched) {
-          const redirectUrl = `https://cityriskview-${matched.prefName}.vercel.app`;
+          const redirectUrl = `https://${matched.prefName}.crvmap.app`;
           window.location.href = redirectUrl;
         } else {
           window.location.href = '/unsupported';

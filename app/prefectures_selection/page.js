@@ -3,10 +3,10 @@
 import { separatedPrefectures } from '../../app/utils/prefectures';
 
 export default function PrefecturesSelectionPage() {
-  const MAIN_DOMAIN = process.env.NEXT_PUBLIC_MAIN_DOMAIN || 'cityriskview.vercel.app';
+  const MAIN_DOMAIN = process.env.NEXT_PUBLIC_MAIN_DOMAIN || 'crvmap.app';
 
   const goToPrefecture = (pref) => {
-    window.location.href = `https://cityriskview-${pref.prefName}.vercel.app`;
+    window.location.href = `https://${pref.prefName}.crvmap.app`;
   };
 
   const goToNation = () => {

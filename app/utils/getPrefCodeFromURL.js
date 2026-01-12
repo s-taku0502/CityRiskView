@@ -5,9 +5,8 @@ import { separatedPrefectures } from "./prefectures";
 /**
  * ホスト名から都道府県コード(pref_code)を取得する（SSR/CSR対応）
  * 対応するホストパターン:
- * - cityriskview-<slug>         (例: cityriskview-tokyo.vercel.app)
- * - city-risk-view-<slug>       (例: city-risk-view-tokyo.vercel.app)
- * - <slug>.cityriskview.*       (例: tokyo.cityriskview.app)
+ * - <slug>.crvmap.app           (例: tokyo.crvmap.app)
+
  * - localhost[:port]            (ローカルは null を返す)
  */
 export function getPrefCodeFromURL(hostFromSSR) {
@@ -36,23 +35,9 @@ export function getPrefCodeFromURL(hostFromSSR) {
   const firstPart = parts[0] || "";
   let prefSlug = null;
 
-  // プレフィックス形式 (cityriskview-*, city-risk-view-*)
-  if (firstPart.startsWith("cityriskview-")) {
-    prefSlug = firstPart.replace("cityriskview-", "");
-  } else if (firstPart.startsWith("city-risk-view-")) {
-    prefSlug = firstPart.replace("city-risk-view-", "");
-  } else if (host.includes("cityriskview")) {
-    if (parts.length >= 3) {
-      prefSlug = parts[0];
-    } else {
-      prefSlug = firstPart !== "cityriskview" ? firstPart : null;
-    }
-  } else if (host.includes("city-risk-view")) {
-    if (parts.length >= 3) {
-      prefSlug = parts[0];
-    } else {
-      prefSlug = firstPart !== "city-risk-view" ? firstPart : null;
-    }
+  // crvmap.app ドメインの場合: <pref>.crvmap.app
+  if (host.includes("crvmap.app")) {
+    prefSlug = firstPart;
   } else {
     prefSlug = firstPart || null;
   }
