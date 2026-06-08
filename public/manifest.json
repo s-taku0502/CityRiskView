@@ -1,0 +1,43 @@
+{
+  "name": "CityRiskView",
+  "short_name": "CRV",
+  "description": "リアルタイム避難所・防災情報マップ",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#1e40af",
+  "theme_color": "#1e40af",
+  "lang": "ja",
+  "categories": ["navigation", "utilities"],
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "避難所マップ",
+      "short_name": "マップ",
+      "description": "避難所の地図を表示",
+      "url": "/",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "気象アラート",
+      "short_name": "アラート",
+      "description": "気象警報・注意報を確認",
+      "url": "/alert",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}
